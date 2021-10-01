@@ -1,12 +1,24 @@
 import pandas as pd
 import requests
 import bs4
+import re
 
+reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+"
 
 def get_page(url) -> bs4.BeautifulSoup:
     content = requests.get(url).text
     soup = bs4.BeautifulSoup(content, "html.parser")
     return soup
+
+
+def get_volume(text: str):
+    s = re.search(reg_volume, text)
+    if s:
+        volume = s.group(0)
+    else:
+        volume = "-"
+    
+    return volume
 
 
 def get_catalog(page, classname):
@@ -134,18 +146,17 @@ def get_ecl_items(data):
     return data
 
 def get_organic_shop(data):
-    items = []
     url = "https://organic-shops.ru/products/?page={}"
     uri = "https://organic-shops.ru"
     
     max_page = 156
 
-    for i in range(0, max_page+1):
+    for i in range(120, max_page+1):
         soup = get_page(url.format(i))
-        print(url.format(i))
+        # print(url.format(i))
 
         catalog = soup.find(class_="items").find_all(class_="item")
-
+        items = []
         for row in catalog:
             item = {
                 "Наименование товара": "",
@@ -175,6 +186,14 @@ def get_organic_shop(data):
                 instr = page.find(id="oo2").text
                 sostav = page.find(id="oo3").text
                 price = page.find(class_="price").find(class_="newprice").text
+
+                s = re.search(reg_volume, name)
+                if s:
+                    volume = s.group(0)
+                else:
+                    volume = "-"
+
+
                 item["Фото"] = photo
                 item["Категория"] = page.find_all(class_="breadcrumb-item")[-1].text
                 item["Наименование товара"] = name
@@ -187,11 +206,13 @@ def get_organic_shop(data):
                 item["Дополнительная информация"] = instr
                 item["Ссылка"] = uri+link
                 item["Ссылка на фото"] = uri+photo
-                data = data.append(item, ignore_index=True)
-                data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+                item["Объем"] = volume
+                print(item["Объем"])
                 items.append(item)
-            except:
-                pass
+            except Exception as e:
+                print(e)
+        data = data.append(items, ignore_index=True)
+        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
     return data
 
 def get_levrana(data):
@@ -207,7 +228,8 @@ def get_levrana(data):
     descr_class = "desc-card-block--text" # Надо извлечь параграфы
     sostav_class = "full-composition-block--text"
     add_info_class = "application-block--text-center"
-    articul_class = "product-article-card" # Replace артикул на "" 
+    articul_class = "product-article-card" # Replace артикул на ""
+    volume_classname = "bx_size" 
     count = 0
 
     for i in range(1, max_page+1):
@@ -254,6 +276,7 @@ def get_levrana(data):
                 item["Дополнительная информация"] = add_info.replace("\n", "")
                 item["Ссылка"] = link
                 item["Ссылка на фото"] = url_photo
+                item["Объем"] = page_item.find(class_=volume_classname).find_all("li")[0].text
                 data = data.append(item, ignore_index=True)
                 data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
                 count += 1
@@ -310,6 +333,7 @@ def get_miko(data):
                     "Дополнительная информация": page_product.find_all(class_=descr_classname)[2].text.replace('\n', ''),
                     "Ссылка": uri+link,
                     "Ссылка на фото": uri+product.find(class_=img_classname).find("img")["src"],
+                    "Объем": get_volume(product.find(class_=title_classname).text.replace('\n', ''))
                 }
                 count += 1
                 print(f"[+] Add {count}")
@@ -336,6 +360,7 @@ def get_craft_cosmetic(data):
     add_info_classname = "field-name-field-ingredients-use"
     descr_classname = "field-name-body"
     category_classname = "page_title" 
+    volume_classname = "field-name-field-production-mass"
 
     for i in range(max_page):
         page = get_page(url.format(i))
@@ -353,6 +378,12 @@ def get_craft_cosmetic(data):
                 else:
                     category = "-" 
 
+                volume = "-"
+                try:
+                    volume = get_volume(page_product.find(class_=volume_classname).text)
+                except:
+                    pass
+
                 item = {
                     "Брэнд": "miko",
                     "Наименование товара": page_product.find(class_=name_classname).text.replace('\n', ''),
@@ -362,6 +393,7 @@ def get_craft_cosmetic(data):
                     "Цена": product.find(class_=price_classname).text.replace('\n', ''),
                     "Описание": page_product.find(class_=descr_classname).text.replace('\n', ''),
                     "Состав": page_product.find(class_=sostav_classname).text.replace('\n', ''),
+                    "Объем": volume,
                     "Фото": page_product.find(class_=img_classname).find("img")["src"],
                     "Дополнительная информация": page_product.find(class_=add_info_classname).text.replace('\n', ''),
                     "Ссылка": uri+link,
@@ -421,6 +453,7 @@ def get_organic_zone(data):
                     "Цена": product.find(class_=price_classname).text.replace('\n', ''),
                     "Описание": page_product.find(class_=descr_classname).text.replace('\n', ''),
                     "Состав": page_product.find(class_=sostav_classname).text.replace('\n', ''),
+                    "Объем": get_volume(page_product.find(class_=descr_classname).text.replace('\n', '')),
                     "Фото": page_product.find(class_=img_classname).find("img")["src"],
                     "Дополнительная информация": page_product.find(class_=add_info_classname).text.replace('\n', ''),
                     "Ссылка": link,
@@ -456,6 +489,7 @@ def get_innature(data):
     sostav_classname = "field-name-field-production-components"
     add_info_classname = "field-name-field-ingredients-use"
     descr_classname = "field-name-body"
+    volume_classname = "field-name-field-production-mass"
 
     for cat, url in categories.items():
         for i in range(5):
@@ -477,6 +511,12 @@ def get_innature(data):
                 else:
                     serie = category.replace("Серия", "")
 
+                volume = "-"
+                try:
+                    volume = get_volume(page_product.find(class_=volume_classname).text)
+                except:
+                    pass
+
                 item = {
                     "Брэнд": "INNATURE",
                     "Наименование товара": product.find(class_=title_classname).text,
@@ -486,6 +526,7 @@ def get_innature(data):
                     "Цена": product.find(class_=price_classname).text.replace('\n', ''),
                     "Описание": page_product.find(class_=descr_classname).text.replace('\n', ''),
                     "Состав": page_product.find(class_=sostav_classname).text.replace('\n', ''),
+                    "Объем": volume,
                     "Фото": product.find(class_=img_classname).find("img")["src"],
                     "Дополнительная информация": page_product.find(class_=add_info_classname).text.replace('\n', ''),
                     "Ссылка": uri+product.find(class_=title_classname).find("a")["href"],
@@ -519,6 +560,7 @@ def get_biothal(data):
     descr_id = "tab-description"
     sostav_id = "tab-apt0"
     addinfo_id = "tab-apt1"
+    cart_classname = "cart"
 
     for cat, url in categories.items():
         page = get_page(url)
@@ -540,6 +582,7 @@ def get_biothal(data):
                     "Цена": item.find(class_=price_classname).find_all("span")[0].text.replace('\n', ''),
                     "Описание": page_product.find(id=descr_id).text.replace('\n', ''),
                     "Состав": page_product.find(id=sostav_id).text.replace('\n', ''),
+                    "Объем": get_volume(page_product.find(class_=cart_classname).text),
                     "Фото": get_img_src(page_product, img_classname2),
                     "Дополнительная информация": page_product.find(id=addinfo_id).text.replace('\n', ''),
                     "Ссылка": url,
@@ -591,6 +634,7 @@ def get_dnc(data):
                     "Цена": item.find(class_=price_classname).find_all("span")[0].text.replace('\n', ''),
                     "Описание": descr,
                     "Состав": sostav,
+                    "Объем": get_volume(descr),
                     "Фото": get_img_src(item, img_classname),
                     "Дополнительная информация": "-",
                     "Ссылка": url,
@@ -606,6 +650,7 @@ def get_dnc(data):
 
 
 def get_klar(data):
+    count = 0
     max_page = 3 # [1, 3]
     url = "https://shop.almawin.de/Klar/?order=name-asc&p={}"
     uri = "https://shop.almawin.de/"
@@ -614,9 +659,62 @@ def get_klar(data):
     price_classname = "product-price"
     img_classname = "product-image-wrapper"
     title_classname = "product-name"
-    info_classname = "product-detail-description" # [0] descr [1] add_info [3] sostav 
+    info_classname = "product-detail-description-text" # [0] descr [1] add_info [3] sostav 
+    sostav_id = "ingredients-tab-pane"
+    add_info_id = "usage-tab-pane"
+    descr_id = "description-tab-pane"
+    category_classname = "product-breadcrumb"
 
+    for i in range(1, max_page+1):
+        page = paginator(url, i)
+        catalog = get_catalog(page, catalog_classname)
+        items = get_items(catalog, items_classname)
 
+        for item in items:
+            title = item.find(class_=title_classname) 
+            link = title["href"]
+            name = title.text
+            page_product = get_page(link)
+
+            category = page_product.find(class_=category_classname).find_all(class_="breadcrumb-container")[-1].text.replace("\n", "")
+
+            info = item.find(class_="product-price-unit")
+            volume = get_volume(info.text)
+
+            try:
+                sostav = page_product.find(id=sostav_id).text.replace('\n', '')
+            except:
+                sostav = "-"
+            try:
+                descr = page_product.find(id=descr_id).text.replace('\n', '')
+            except:
+                descr = "-"
+            try:
+                add_info = page_product.find(id=add_info_id).text.replace('\n', '')
+            except:
+                add_info = "-"
+
+            product = {
+                "Брэнд": "Klar",
+                "Наименование товара": name,
+                "Категория": category,
+                "Серия": "-",
+                "Артикул": page_product.find_all(class_="product-detail-ordernumber-container")[0].text.replace("\n", ""),
+                "Цена": item.find(class_=price_classname).text.replace('\n', ''),
+                "Описание": descr,
+                "Состав": sostav,
+                "Объем": volume,
+                "Фото": item.find(class_=img_classname).find("img")["src"],
+                "Дополнительная информация": add_info,
+                "Ссылка": url,
+                "Ссылка на фото": item.find(class_=img_classname).find("img")["src"],
+            }
+            count += 1
+            print(f"[+] Add {count}")
+            data = data.append(product, ignore_index=True)
+            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+            print(volume)
+    return data
 
 def start_parser() -> pd.DataFrame:
     print("[*] Start parser")
@@ -629,6 +727,7 @@ def start_parser() -> pd.DataFrame:
         "Цена",
         "Описание",
         "Состав",
+        "Объем",
         "Фото",
         "Дополнительная информация",
         "Ссылка",
@@ -636,14 +735,15 @@ def start_parser() -> pd.DataFrame:
         ]
     data = pd.DataFrame(columns=columns)
 
-    data = get_ecl_items(data)
-    data = get_organic_shop(data)
-    data = get_levrana(data)
-    data = get_miko(data)
-    data = get_craft_cosmetic(data)
-    data = get_organic_zone(data)
-    data = get_innature(data)
-    data = get_biothal(data)
-    data = get_dnc(data)
+    # data = get_ecl_items(data)
+    # data = get_organic_shop(data)
+    # data = get_levrana(data)
+    # data = get_miko(data)
+    # data = get_craft_cosmetic(data)
+    # data = get_organic_zone(data)
+    # data = get_innature(data)
+    # data = get_biothal(data)
+    # data = get_dnc(data)
+    data = get_klar(data)
 
     return data
