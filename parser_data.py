@@ -735,15 +735,15 @@ def start_parser() -> pd.DataFrame:
         ]
     data = pd.DataFrame(columns=columns)
 
-    # data = get_ecl_items(data)
-    # data = get_organic_shop(data)
-    # data = get_levrana(data)
-    # data = get_miko(data)
-    # data = get_craft_cosmetic(data)
-    # data = get_organic_zone(data)
-    # data = get_innature(data)
-    # data = get_biothal(data)
-    # data = get_dnc(data)
+    data = get_ecl_items(data)
+    data = get_organic_shop(data)
+    data = get_levrana(data)
+    data = get_miko(data)
+    data = get_craft_cosmetic(data)
+    data = get_organic_zone(data)
+    data = get_innature(data)
+    data = get_biothal(data)
+    data = get_dnc(data)
     data = get_klar(data)
 
     return data
