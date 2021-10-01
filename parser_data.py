@@ -423,7 +423,7 @@ def get_organic_zone(data):
                     "Состав": page_product.find(class_=sostav_classname).text.replace('\n', ''),
                     "Фото": page_product.find(class_=img_classname).find("img")["src"],
                     "Дополнительная информация": page_product.find(class_=add_info_classname).text.replace('\n', ''),
-                    "Ссылка": uri+link,
+                    "Ссылка": link,
                     "Ссылка на фото": page_product.find(class_=img_classname).find("img")["src"],
                 }
                 count += 1
