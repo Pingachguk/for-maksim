@@ -139,6 +139,7 @@ def get_ecl_items(data):
                 item["Дополнительная информация"] = descr[2].text
                 item["Ссылка"] = uri+link["href"]
                 item["Ссылка на фото"] = uri+photo
+                item["Объем"] = "-"
                 data = data.append(item, ignore_index=True)
                 data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
                 items.append(item)
@@ -706,7 +707,7 @@ def get_klar(data):
                 "Объем": volume,
                 "Фото": item.find(class_=img_classname).find("img")["src"],
                 "Дополнительная информация": add_info,
-                "Ссылка": url,
+                "Ссылка": link,
                 "Ссылка на фото": item.find(class_=img_classname).find("img")["src"],
             }
             count += 1
@@ -715,6 +716,303 @@ def get_klar(data):
             data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
             print(volume)
     return data
+
+
+# def get_biostudio(data):
+#     uri = "http://www.biostudio.ru"
+#     count = 0
+#     sitemap = open("triobio.xml", "r").read()
+#     source = bs4.BeautifulSoup(sitemap, "lxml")
+#     locs = source.find_all("loc")
+#     urls = []
+#     for loc in locs:
+#         if (loc.text).find("?productID=") != -1:
+#             urls.append(loc.text)
+
+#     category = "cat_info_left_block" # find all "a"
+
+#     for url in urls:
+#         page_product = get_page(url)
+#         product = {
+#             "Брэнд": "Klar",
+#             "Наименование товара": name,
+#             "Категория": category,
+#             "Серия": "-",
+#             "Артикул": page_product.find_all(class_="product-detail-ordernumber-container")[0].text.replace("\n", ""),
+#             "Цена": item.find(class_=price_classname).text.replace('\n', ''),
+#             "Описание": descr,
+#             "Состав": sostav,
+#             "Объем": volume,
+#             "Фото": item.find(class_=img_classname).find("img")["src"],
+#             "Дополнительная информация": add_info,
+#             "Ссылка": url,
+#             "Ссылка на фото": item.find(class_=img_classname).find("img")["src"],
+#         }
+#         count += 1
+#         print(f"[+] Add {count}")
+#         data = data.append(product, ignore_index=True)
+#         data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+#     return data
+
+def get_ecover(data):
+    count = 0
+    uri = "http://ecovershop.ru"
+    catalog_classname = "products-area" # find all td
+    title_classname = "product-name" # get volume, get link, get name
+    price_classname = "price-number" 
+    info_classname = "prod-description-text"
+    img_classname = "prod-img"
+
+    urls = []
+
+    sitemap = requests.get("http://ecovershop.ru/sitemap.xml").text
+    source = bs4.BeautifulSoup(sitemap, "lxml")
+    locs = source.find_all("loc")
+
+    for loc in locs:
+        if (loc.text).find("?products_id=") != -1:
+            urls.append(loc.text)
+
+    for url in urls:
+        print(url)
+        page_product = bs4.BeautifulSoup(requests.get(url).text, "html.parser")
+
+        info = page_product.find(class_=info_classname).text
+
+        descr = info[info.rfind("Описание"):info.rfind("Способ применения")]
+        add_info = info[info.rfind("Способ применения"):info.rfind("Состав")]
+        if info[info.rfind("Состав"):].find("Положить") != -1:
+            sostav = info[info.rfind("Состав"):info.find("Положить")]
+        elif info[info.rfind("Состав"):].find("Оставьте") != -1:
+            sostav = info[info.rfind("Состав"):info.find("Оставьте")]
+        elif info[info.rfind("Состав"):].find("Отзывы") != -1:
+            sostav = info[info.rfind("Состав"):info.find("Отзывы")]
+
+        serie = "-"
+        articul = "-"
+        volume = "-"
+        name = "-"
+        price = page_product.find_all(class_=price_classname)
+        if len(price):
+            price = page_product.find(class_=price_classname).text.replace('\n', '')
+        else:
+            price = "-"
+
+
+        right_info = page_product.find(class_="product-card-right-block")
+        table = right_info.find("table")
+        for row in table.find_all("tr"):
+            if row.find(class_="prod-prop-bg").text.find("Серия") != -1:
+                serie = row.find(class_="prod-prop-val").text
+            if row.find(class_="prod-prop-bg").text.find("Артикул") != -1:
+                articul = row.find(class_="prod-prop-val").text
+            if row.find(class_="prod-prop-bg").text.find("Упаковка средства") != -1:
+                volume = get_volume(row.find(class_="prod-prop-val").text)
+
+
+        product = {
+            "Брэнд": "Ecover",
+            "Наименование товара": page_product.find(class_="bread-crump").find_all("a")[-1].text,
+            "Категория": page_product.find(class_="bread-crump").find_all("a")[-2].text,
+            "Серия": serie,
+            "Артикул": articul,
+            "Цена": price,
+            "Описание": descr,
+            "Состав": sostav,
+            "Объем": volume,
+            "Фото": uri+"/"+page_product.find(class_=img_classname)["src"],
+            "Дополнительная информация": add_info,
+            "Ссылка": url,
+            "Ссылка на фото": uri+"/"+page_product.find(class_=img_classname)["src"],
+        }
+
+        data = data.append(product, ignore_index=True)
+        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+        count += 1
+        print(f"[+] Add {count}")
+    return data
+
+
+def get_sonett(data):
+    count = 0
+    url = "https://sonettmsk.ru/shop-list/with-filter/"
+    items_classname = "mkd-pli"
+    img_classname = "wp-post-image"
+    addinfo_classname = "woocommerce-Tabs-panel--additional_information"
+
+    page = get_page(url)
+    items = page.find_all(class_=items_classname)
+
+    for item in items:
+        name: str = item.find(class_="mkd-pli-title").find("a").text
+        link = item.find(class_="mkd-pli-title").find("a")["href"]
+        page_product = get_page(link)
+        # string[string.find("Состав"):string.find("\n\n")]
+        
+        sostav = "-"
+        add_info = []
+        volume = "-"
+
+        info = page_product.find_all(class_="woocommerce-Tabs-panel--additional_information")
+        if info:
+            info = info[0]
+            tr = info.find("table").find_all("tr", class_="woocommerce-product-attributes-item")
+            for row in tr:
+                if row.find("th", "woocommerce-product-attributes-item__label").text.find("Состав") != -1:
+                    sostav = row.find("td", "woocommerce-product-attributes-item__value").text
+                elif row.find("th", "woocommerce-product-attributes-item__label").text.find("Объем") != -1:
+                    volume = row.find("td", "woocommerce-product-attributes-item__value").text
+                else:
+                    add_info.append(row.text+"\n")
+
+        product = {
+            "Брэнд": "Sonett",
+            "Наименование товара": name,
+            "Категория": page_product.find(class_="posted_in").find_all("a")[-1].text,
+            "Серия": "Sensitive" if name.lower().find("sensitiv") else "-",
+            "Артикул": page_product.find(class_="sku").text if len(page_product.find_all(class_="sku")) else "-",
+            "Цена": item.find(class_="woocommerce-Price-amount").text,
+            "Описание": page_product.find(class_="woocommerce-product-details__short-description").text,
+            "Состав": sostav,
+            "Объем": volume,
+            "Фото": page_product.find(class_=img_classname)["src"],
+            "Дополнительная информация": "\n".join(add_info) if len(add_info) else "-",
+            "Ссылка": link,
+            "Ссылка на фото": page_product.find(class_=img_classname)["src"],
+        }
+
+        data = data.append(product, ignore_index=True)
+        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+        count += 1
+        print(f"[+] Add {count}")
+    return data
+
+
+def get_sodasan(data):
+    count = 0
+    url_categories = {
+        "Pflege": "https://www.sodasan-shop.de/pflege/?p={}",
+        "Waschen": "https://www.sodasan-shop.de/waschen/?p={}",
+        "Reinigen": "https://www.sodasan-shop.de/reinigungsmittel/?p={}",
+        "Spuelen": "https://www.sodasan-shop.de/spuelen/?p={}",
+        "Duefte": "https://www.sodasan-shop.de/duefte/?p={}",
+        "Desinfektion": "https://www.sodasan-shop.de/desinfektion/?p={}",
+        "Sensitiv": "https://www.sodasan-shop.de/sensitiv/?p={}",
+    }
+    uri = "https://www.sodasan-shop.de"
+
+    catalog_classname = "listing--container"
+    items_classname = "product--box"
+    title_classname = "product--title"
+    price_classname = "price--default"
+    img_classname = "image--media"
+    category_classname = "breadcrumb--title"
+    info_classname = "content--information"
+
+    for category, url in url_categories.items():
+        if category == "Pflege":
+            max_page = 2
+        else:
+            max_page = 1
+        
+        for i in range(1, max_page+1):
+            page = paginator(url, i)
+            items = page.find_all(class_=items_classname)
+            if len(items):
+                for item in items:
+                    print(item.find(class_=title_classname)["href"])
+                    link = item.find(class_=title_classname)["href"]
+                    name = item.find(class_=title_classname).text
+                    price = item.find(class_=price_classname).text
+                    page_product = get_page(link)
+
+                    add_info = []
+                    sostav = "-"
+                    info = page_product.find(class_=info_classname).find_all(class_="attr")
+
+                    if len(info):
+                        for sec in info:
+                            title = sec.find(class_="content--title").text
+
+                            if title.find("Inhaltsstoffe") != -1:
+                                sostav = sec.find(class_="content--quote").text
+                            else:
+                                add_info.append(sec.text)
+
+                    product = {
+                        "Брэнд": "Sodasan",
+                        "Наименование товара": name,
+                        "Категория": page_product.find_all(class_=category_classname)[-2].text,
+                        "Серия": "-",
+                        "Артикул": page_product.find(class_="entry--content").text,
+                        "Цена": price,
+                        "Описание": page_product.find(class_="product--description").text,
+                        "Состав": sostav,
+                        "Объем": get_volume(item.find(class_="price--unit").text),
+                        "Фото": page_product.find(class_=img_classname).find("img")["src"],
+                        "Дополнительная информация": "\n".join(add_info) if len(add_info) else "-",
+                        "Ссылка": link,
+                        "Ссылка на фото": page_product.find(class_=img_classname).find("img")["src"],
+                    }
+
+                    data = data.append(product, ignore_index=True)
+                    data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+                    count += 1
+                    print(f"[+] Add {count}")
+    return data
+
+
+def get_biomio(data):
+    url = "https://biomio.ru/catalogue/"
+    
+    items_classname = "like__item"
+    volume_classname = "like__desc"
+    title_classname = "like__item-title"
+    category_classname = "like__ctg"
+    img_classname = "advantages__left"
+
+    page = get_page(url)
+    items = page.find_all(class_=items_classname)
+    for item in items:
+        name = item.find(class_=title_classname).text
+        link = item["href"]
+
+        page_product = get_page(link)
+
+        add_info = []
+
+        info = page_product.find(class_="wrapper")
+
+        recomend = info.find_all(class_="gal__item")
+        recomend1 = info.find(class_="recomend")
+
+        for r in recomend:
+            add_info.append(r.text)
+        add_info.append(recomend1.text if recomend1 else "")
+
+        product = {
+            "Брэнд": "Sodasan",
+            "Наименование товара": name,
+            "Категория": item.find(class_=category_classname).text,
+            "Серия": "-",
+            "Артикул": "-",
+            "Цена": "-",
+            "Описание": page_product.find(class_="block__desc").text,
+            "Состав": page_product.find(class_="sostav__left").text,
+            "Объем": get_volume(item.find(class_=volume_classname).text),
+            "Фото": page_product.find(class_=img_classname).find("img")["src"],
+            "Дополнительная информация": "\n".join(add_info) if len(add_info) else "-",
+            "Ссылка": link,
+            "Ссылка на фото": page_product.find(class_=img_classname).find("img")["src"],
+        }
+
+        data = data.append(product, ignore_index=True)
+        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+        count += 1
+        print(f"[+] Add {count}")
+
+    return data
+
 
 def start_parser() -> pd.DataFrame:
     print("[*] Start parser")
@@ -732,18 +1030,23 @@ def start_parser() -> pd.DataFrame:
         "Дополнительная информация",
         "Ссылка",
         "Ссылка на фото"
-        ]
+    ]
     data = pd.DataFrame(columns=columns)
 
-    data = get_ecl_items(data)
-    data = get_organic_shop(data)
-    data = get_levrana(data)
-    data = get_miko(data)
-    data = get_craft_cosmetic(data)
-    data = get_organic_zone(data)
-    data = get_innature(data)
-    data = get_biothal(data)
-    data = get_dnc(data)
-    data = get_klar(data)
+    # data = get_ecl_items(data)
+    # data = get_organic_shop(data)
+    # data = get_levrana(data)
+    # data = get_miko(data)
+    # data = get_craft_cosmetic(data)
+    # data = get_organic_zone(data)
+    # data = get_innature(data)
+    # data = get_biothal(data)
+    # data = get_dnc(data)
+    # data = get_klar(data)
+    # data = get_ecover(data)
+    ## data = get_biostudio(data)
+    # data = get_sonett(data)
+    # data = get_sodasan(data)
+    data = get_biomio(data)
 
     return data
