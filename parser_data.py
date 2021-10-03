@@ -202,7 +202,6 @@ def get_organic_shop(data):
             else:
                 brand = "-"
             
-            name = row.find(class_="name").text
             photo = row.find(class_="firstp")["src"]
 
             page = get_page(uri+link)
@@ -216,6 +215,7 @@ def get_organic_shop(data):
                     articul = "-"
                     brand_serie = "-"
 
+                name = page.find(class_="nazvanie").text
                 tabs = page.find(class_="tabsform").find_all(class_="tab-pane")
                 descr = page.find(id="oo1").text
                 instr = page.find(id="oo2").text
