@@ -1,14 +1,29 @@
+from datetime import datetime
 import pandas as pd
 import requests
 import bs4
 import re
 
+
 reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+"
+session = requests.Session()
+adapter = requests.adapters.HTTPAdapter(
+    pool_connections=100,
+    pool_maxsize=100)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
 
 def get_page(url) -> bs4.BeautifulSoup:
-    content = requests.get(url).text
-    soup = bs4.BeautifulSoup(content, "html.parser")
-    return soup
+    time_b = datetime.now().timestamp()
+    response = session.get(url)
+    if response.status_code == 200:
+        content = requests.get(url).text
+        soup = bs4.BeautifulSoup(content, "html.parser")
+        time_e = datetime.now().timestamp()
+        print("%.3f s"%(time_e-time_b))
+        return soup
+    else:
+        return None
 
 
 def get_volume(text: str):
@@ -179,47 +194,53 @@ def get_organic_shop(data):
                 brand = brand.text
             else:
                 brand = "-"
+            
             name = row.find(class_="name").text
             photo = row.find(class_="firstp")["src"]
 
             page = get_page(uri+link)
+            if page:
+                time_begin = datetime.now().timestamp()
+                if page.find(class_="info"):
+                    info = page.find(class_="info")
+                    articul: str = info.find_all("span")[0].text if len(info.find_all("span")[0]) else "-"
+                    brand_serie: str = info.find_all("span")[1].text if len(info.find_all("span")) > 1 else "-"
+                else:
+                    articul = "-"
+                    brand_serie = "-"
 
-            info = page.find(class_="info")
-            articul: str = info.find_all("span")[0].text
-            brand_serie: str = info.find_all("span")[1].text
+                tabs = page.find(class_="tabsform").find_all(class_="tab-pane")
+                descr = page.find(id="oo1").text
+                instr = page.find(id="oo2").text
+                sostav = page.find(id="oo3").text
+                price = page.find(class_="price").find(class_="newprice").text
 
-            tabs = page.find(class_="tabsform").find_all(class_="tab-pane")
-            descr = page.find(id="oo1").text
-            instr = page.find(id="oo2").text
-            sostav = page.find(id="oo3").text
-            price = page.find(class_="price").find(class_="newprice").text
-
-            s = re.search(reg_volume, name)
-            if s:
-                volume = s.group(0)
-            else:
-                volume = "-"
+                s = re.search(reg_volume, name)
+                if s:
+                    volume = s.group(0)
+                else:
+                    volume = "-"
 
 
-            item["Фото"] = photo
-            item["Категория"] = page.find_all(class_="breadcrumb-item")[-1].text
-            item["Наименование товара"] = name
-            item["Брэнд"] = brand
-            item["Артикул"] = articul.replace("Артикул:", "")
-            item["Серия"] = brand_serie.replace("Линия:", "").replace(brand, "")
-            item["Описание"] = descr.replace("\n", "")
-            item["Состав"] = sostav
-            item["Цена"] = price
-            item["Дополнительная информация"] = instr
-            item["Ссылка"] = uri+link
-            item["Ссылка на фото"] = uri+photo
-            item["Объем"] = volume
-            count += 1
-            print(f"[+] Add: {count}")
-            if not brand in brands.keys():
-                brands[brand] = []
-            brands[brand] = brands[brand].append(item) 
-
+                item["Фото"] = photo
+                item["Категория"] = page.find_all(class_="breadcrumb-item")[-1].text
+                item["Наименование товара"] = name
+                item["Брэнд"] = brand
+                item["Артикул"] = articul.replace("Артикул:", "")
+                item["Серия"] = brand_serie.replace("Линия:", "").replace(brand, "")
+                item["Описание"] = descr.replace("\n", "")
+                item["Состав"] = sostav
+                item["Цена"] = price
+                item["Дополнительная информация"] = instr
+                item["Ссылка"] = uri+link
+                item["Ссылка на фото"] = uri+photo
+                item["Объем"] = volume
+                count += 1
+                if not (brand in brands.keys()):
+                    brands[brand] = []
+                brands[brand].append(item) 
+                time_end = datetime.now().timestamp()
+                print(f"[+] Add: {count}. Time: %.2f s"%(time_end-time_begin))
     for key in brands.keys():
         data = data.append(brands[key], ignore_index=True)
     data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
@@ -1043,7 +1064,7 @@ def start_parser() -> pd.DataFrame:
     ]
     data = pd.DataFrame(columns=columns)
 
-    data = get_ecl_items(data)
+    # data = get_ecl_items(data)
     data = get_organic_shop(data)
     data = get_levrana(data)
     data = get_miko(data)
