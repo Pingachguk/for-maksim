@@ -4,7 +4,10 @@ import requests
 import bs4
 import re
 import certifi
+import urllib3
 
+
+urllib3.disable_warnings()
 
 reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+"
 session = requests.Session()
@@ -14,6 +17,7 @@ session = requests.Session()
 # session.mount('http://', adapter)
 # session.mount('https://', adapter)
 session.verify = False
+
 
 def get_page(url) -> bs4.BeautifulSoup:
     time_b = datetime.now().timestamp()
