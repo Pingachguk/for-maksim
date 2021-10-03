@@ -172,51 +172,54 @@ def get_organic_shop(data):
                 "Фото": "",
                 "Дополнительная информация": "",
             }
-            try:
-                link = row.find("a")["href"]
-                brand = row.find(class_="brend").text
-                name = row.find(class_="name").text
-                photo = row.find(class_="firstp")["src"]
 
-                page = get_page(uri+link)
+            link = row.find("a")["href"]
+            brand = row.find(class_="brend")
+            if brand:
+                brand = brand.text
+            else:
+                brand = "-"
+            name = row.find(class_="name").text
+            photo = row.find(class_="firstp")["src"]
 
-                info = page.find(class_="info")
-                articul: str = info.find_all("span")[0].text
-                brand_serie: str = info.find_all("span")[1].text
+            page = get_page(uri+link)
 
-                tabs = page.find(class_="tabsform").find_all(class_="tab-pane")
-                descr = page.find(id="oo1").text
-                instr = page.find(id="oo2").text
-                sostav = page.find(id="oo3").text
-                price = page.find(class_="price").find(class_="newprice").text
+            info = page.find(class_="info")
+            articul: str = info.find_all("span")[0].text
+            brand_serie: str = info.find_all("span")[1].text
 
-                s = re.search(reg_volume, name)
-                if s:
-                    volume = s.group(0)
-                else:
-                    volume = "-"
+            tabs = page.find(class_="tabsform").find_all(class_="tab-pane")
+            descr = page.find(id="oo1").text
+            instr = page.find(id="oo2").text
+            sostav = page.find(id="oo3").text
+            price = page.find(class_="price").find(class_="newprice").text
+
+            s = re.search(reg_volume, name)
+            if s:
+                volume = s.group(0)
+            else:
+                volume = "-"
 
 
-                item["Фото"] = photo
-                item["Категория"] = page.find_all(class_="breadcrumb-item")[-1].text
-                item["Наименование товара"] = name
-                item["Брэнд"] = brand
-                item["Артикул"] = articul.replace("Артикул:", "")
-                item["Серия"] = brand_serie.replace("Линия:", "").replace(brand, "")
-                item["Описание"] = descr.replace("\n", "")
-                item["Состав"] = sostav
-                item["Цена"] = price
-                item["Дополнительная информация"] = instr
-                item["Ссылка"] = uri+link
-                item["Ссылка на фото"] = uri+photo
-                item["Объем"] = volume
-                count += 1
-                print(f"[+] Add: {count}")
-                if not brand in brands.keys():
-                    brands[brand] = []
-                brands[brand] = brands[brand].append(item) 
-            except Exception as e:
-                print(e)
+            item["Фото"] = photo
+            item["Категория"] = page.find_all(class_="breadcrumb-item")[-1].text
+            item["Наименование товара"] = name
+            item["Брэнд"] = brand
+            item["Артикул"] = articul.replace("Артикул:", "")
+            item["Серия"] = brand_serie.replace("Линия:", "").replace(brand, "")
+            item["Описание"] = descr.replace("\n", "")
+            item["Состав"] = sostav
+            item["Цена"] = price
+            item["Дополнительная информация"] = instr
+            item["Ссылка"] = uri+link
+            item["Ссылка на фото"] = uri+photo
+            item["Объем"] = volume
+            count += 1
+            print(f"[+] Add: {count}")
+            if not brand in brands.keys():
+                brands[brand] = []
+            brands[brand] = brands[brand].append(item) 
+
     for key in brands.keys():
         data = data.append(brands[key], ignore_index=True)
     data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
