@@ -21,7 +21,7 @@ session.verify = False
 
 def get_page(url) -> bs4.BeautifulSoup:
     time_b = datetime.now().timestamp()
-    response = session.get(url, verify=False)
+    response = requests.get(url, verify=False)
 
     if response.status_code == 200:
         content = response.text
