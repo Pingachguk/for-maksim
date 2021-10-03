@@ -9,13 +9,13 @@ import urllib3
 
 urllib3.disable_warnings()
 
-reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+"
+reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+|[0-9]+[0-9]*[0-9]*\s*(кг)+|[0-9]+[0-9]*[0-9]*\s*(г)+|[0-9]+[0-9]*[0-9]*\s*(g)+|[0-9]+[0-9]*[0-9]*\s*(kg)+"
 session = requests.Session()
-adapter = requests.adapters.HTTPAdapter(
-    pool_connections=100,
-    pool_maxsize=100)
-session.mount('http://', adapter)
-session.mount('https://', adapter)
+# adapter = requests.adapters.HTTPAdapter(
+#     pool_connections=100,
+#     pool_maxsize=100)
+# session.mount('http://', adapter)
+# session.mount('https://', adapter)
 session.verify = False
 
 
