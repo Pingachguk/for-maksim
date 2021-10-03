@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import bs4
 import re
+import certifi
 
 
 reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+"
@@ -12,12 +13,14 @@ session = requests.Session()
 #     pool_maxsize=100)
 # session.mount('http://', adapter)
 # session.mount('https://', adapter)
+session.verify = False
 
 def get_page(url) -> bs4.BeautifulSoup:
     time_b = datetime.now().timestamp()
-    response = session.get(url)
+    response = session.get(url, verify=False)
+
     if response.status_code == 200:
-        content = requests.get(url).text
+        content = response.text
         soup = bs4.BeautifulSoup(content, "html.parser")
         time_e = datetime.now().timestamp()
         print("%.3f s"%(time_e-time_b))
@@ -1079,5 +1082,9 @@ def start_parser() -> pd.DataFrame:
     # data = get_sonett(data)
     # data = get_sodasan(data)
     # data = get_biomio(data)
+    # Chocolatte
+    # https://shop.almawin.de/AlmaWin/ Alamwin like Klar
+    # 
+
 
     return data
