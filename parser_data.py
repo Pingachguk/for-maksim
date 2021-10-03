@@ -149,10 +149,12 @@ def get_ecl_items(data):
 def get_organic_shop(data):
     url = "https://organic-shops.ru/products/?page={}"
     uri = "https://organic-shops.ru"
+    brands = {}
+    count = 0
     
     max_page = 156
 
-    for i in range(120, max_page+1):
+    for i in range(1, max_page+1):
         soup = get_page(url.format(i))
         # print(url.format(i))
 
@@ -208,12 +210,16 @@ def get_organic_shop(data):
                 item["Ссылка"] = uri+link
                 item["Ссылка на фото"] = uri+photo
                 item["Объем"] = volume
-                print(item["Объем"])
-                items.append(item)
+                count += 1
+                print(f"[+] Add: {count}")
+                if not brand in brands.keys():
+                    brands[brand] = []
+                brands[brand] = brands[brand].append(item) 
             except Exception as e:
                 print(e)
-        data = data.append(items, ignore_index=True)
-        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+    for key in brands.keys():
+        data = data.append(brands[key], ignore_index=True)
+    data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
     return data
 
 def get_levrana(data):
@@ -963,6 +969,7 @@ def get_sodasan(data):
 
 
 def get_biomio(data):
+    count = 0
     url = "https://biomio.ru/catalogue/"
     
     items_classname = "like__item"
@@ -1033,20 +1040,20 @@ def start_parser() -> pd.DataFrame:
     ]
     data = pd.DataFrame(columns=columns)
 
-    # data = get_ecl_items(data)
-    # data = get_organic_shop(data)
-    # data = get_levrana(data)
-    # data = get_miko(data)
-    # data = get_craft_cosmetic(data)
-    # data = get_organic_zone(data)
-    # data = get_innature(data)
-    # data = get_biothal(data)
-    # data = get_dnc(data)
-    # data = get_klar(data)
-    # data = get_ecover(data)
+    data = get_ecl_items(data)
+    data = get_organic_shop(data)
+    data = get_levrana(data)
+    data = get_miko(data)
+    data = get_craft_cosmetic(data)
+    data = get_organic_zone(data)
+    data = get_innature(data)
+    data = get_biothal(data)
+    data = get_dnc(data)
+    data = get_klar(data)
+    data = get_ecover(data)
     ## data = get_biostudio(data)
-    # data = get_sonett(data)
-    # data = get_sodasan(data)
-    data = get_biomio(data)
+    data = get_sonett(data)
+    data = get_sodasan(data)
+    # data = get_biomio(data)
 
     return data
