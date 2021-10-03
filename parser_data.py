@@ -85,7 +85,8 @@ def get_img_src(item, classname):
 def get_text_block(begin_index, text):
     if begin_index !=-1:
         enter = text[begin_index:].find("\n")
-        block = text[begin_index:enter]
+        end = begin_index+enter
+        block = text[begin_index:end]
         return block
     else:
         return "-"
@@ -777,7 +778,6 @@ def get_klar(data):
             print(f"[+] Add {count}")
             data = data.append(product, ignore_index=True)
             data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
-            print(volume)
     return data
 
 
@@ -1101,19 +1101,18 @@ def get_chocolatte(data):
         category = page_product.find(class_=category_classname).text.split(">")[-2]
 
         addinfo_index = info.find("Условия хранения")
-        use_info_index = info.find("Применение")
-        sostav_index = info.find("Состав")
+        use_info_index = info.find("Применение") if info.find("Применение") != -1 else info.find("Способ применения")
+        sostav_index = info.find("Состав") if info.find("Состав") != -1 else info.find("Материал") if info.find("Материал") != -1 else info.find("Общий состав")
         articul_index = params.find("Артикул")
         brand_index = params.find("Бренд")
         volume_index = params.find("Объем")
-
 
         add_info.append(get_text_block(addinfo_index, info))
         add_info.append(get_text_block(use_info_index, info))
         sostav = get_text_block(sostav_index, info)
         articul = get_text_block(articul_index, params)
         brand = get_text_block(brand_index, params)
-        volume = get_volume(get_text_block(volume_index, params))
+        volume = get_volume(name)
         desc = info.replace(sostav, "")
 
         product = {
@@ -1140,6 +1139,77 @@ def get_chocolatte(data):
     return data
 
 
+def get_almawin(data):
+    count = 0
+    max_page = 3 # [1, 3]
+    url = "https://shop.almawin.de/AlmaWin/?order=name-asc&p={}"
+    uri = "https://shop.almawin.de/"
+    catalog_classname = "js-listing-wrapper"
+    items_classname = "product-box"
+    price_classname = "product-price"
+    img_classname = "product-image-wrapper"
+    title_classname = "product-name"
+    info_classname = "product-detail-description-text" # [0] descr [1] add_info [3] sostav 
+    sostav_id = "ingredients-tab-pane"
+    add_info_id = "usage-tab-pane"
+    descr_id = "description-tab-pane"
+    category_classname = "product-breadcrumb"
+
+    for i in range(1, max_page+1):
+        page = paginator(url, i)
+        catalog = get_catalog(page, catalog_classname)
+        items = get_items(catalog, items_classname)
+
+        for item in items:
+            title = item.find(class_=title_classname) 
+            link = title["href"]
+            name = title.text
+            page_product = get_page(link)
+
+            category = page_product.find(class_=category_classname).find_all(class_="breadcrumb-container")[-1].text.replace("\n", "")
+
+            info = item.find(class_="product-price-unit")
+            volume = get_volume(info.text)
+
+            try:
+                sostav = page_product.find(id=sostav_id).text.replace('\n', '')
+            except:
+                sostav = "-"
+            try:
+                descr = page_product.find(id=descr_id).text.replace('\n', '')
+            except:
+                descr = "-"
+            try:
+                add_info = page_product.find(id=add_info_id).text.replace('\n', '')
+            except:
+                add_info = "-"
+
+            product = {
+                "Брэнд": "Klar",
+                "Наименование товара": name,
+                "Категория": category,
+                "Серия": "-",
+                "Артикул": page_product.find_all(class_="product-detail-ordernumber-container")[0].text.replace("\n", ""),
+                "Цена": item.find(class_=price_classname).text.replace('\n', ''),
+                "Описание": descr,
+                "Состав": sostav,
+                "Объем": volume,
+                "Фото": item.find(class_=img_classname).find("img")["src"],
+                "Дополнительная информация": add_info,
+                "Ссылка": link,
+                "Ссылка на фото": item.find(class_=img_classname).find("img")["src"],
+            }
+            count += 1
+            print(f"[+] Add {count}")
+            data = data.append(product, ignore_index=True)
+            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+    return data
+
+
+def get_ecodoo(data):
+    url = "http://ecodoo.sbazara.ru/"
+
+
 def start_parser() -> pd.DataFrame:
     print("[*] Start parser")
     columns = [
@@ -1160,24 +1230,23 @@ def start_parser() -> pd.DataFrame:
     data = pd.DataFrame(columns=columns)
 
 # ADD IMGAGES
-    # data = get_ecl_items(data)
-    # data = get_organic_shop(data) Slider imgtovar
-    # data = get_levrana(data)
-    # data = get_miko(data) bx-pager
-    # data = get_craft_cosmetic(data)
-    # data = get_organic_zone(data)
-    # data = get_innature(data)
-    # data = get_biothal(data) popup-image
-    # data = get_dnc(data) c-images__slider__img
-    # data = get_klar(data)
-    # data = get_ecover(data)
-    ## data = get_biostudio(data)
-    # data = get_sonett(data)
-    # data = get_sodasan(data) get sitemap
-    # data = get_biomio(data)
-    # Chocolatte https://www.tm-chocolatte.ru/
+    data = get_ecl_items(data)
+    data = get_organic_shop(data) #Slider imgtovar
+    data = get_levrana(data)
+    data = get_miko(data) #bx-pager
+    data = get_craft_cosmetic(data)
+    data = get_organic_zone(data)
+    data = get_innature(data)
+    data = get_biothal(data) #popup-image
+    data = get_dnc(data) #c-images__slider__img
+    data = get_klar(data)
+    data = get_ecover(data)
+    # data = get_biostudio(data)
+    data = get_sonett(data)
+    data = get_sodasan(data) #get sitemap
+    data = get_biomio(data)
     data = get_chocolatte(data)
-    # Almawin https://shop.almawin.de/AlmaWin/ Alamwin like Klar
+    data = get_almawin(data)
     # Ecodoo http://ecodoo.sbazara.ru
     # Uralsoap
     # Biomama product class t776__product-full
