@@ -9,7 +9,7 @@ import urllib3
 
 urllib3.disable_warnings()
 
-reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+|[0-9]+[0-9]*[0-9]*\s*(кг)+|[0-9]+[0-9]*[0-9]*\s*(г)+|[0-9]+[0-9]*[0-9]*\s*(g)+|[0-9]+[0-9]*[0-9]*\s*(kg)+|[0-9]+[0-9]*[0-9]*\s*(шт)+"
+reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+|[0-9]+[0-9]*[0-9]*\s*(кг)+|[0-9]+[0-9]*[0-9]*\s*(г)+|[0-9]+[0-9]*[0-9]*\s*(g)+|[0-9]+[0-9]*[0-9]*\s*(kg)+|[0-9]+[0-9]*[0-9]*\s*(шт)+|[0-9]+[0-9]*[0-9]*\s*(уп)+"
 session = requests.Session()
 # adapter = requests.adapters.HTTPAdapter(
 #     pool_connections=100,
@@ -18,11 +18,17 @@ session = requests.Session()
 # session.mount('https://', adapter)
 session.verify = False
 
+http_proxy  = "http://Selandreiyakimov4:A9t7SjV@212.22.73.79:45785"
+https_proxy = "https://Selandreiyakimov4:A9t7SjV@212.22.73.79:45785"
+
+# proxyDict = { 
+#               "http"  : http_proxy, 
+#               "https" : https_proxy, 
+# }
 
 def get_page(url) -> bs4.BeautifulSoup:
     time_b = datetime.now().timestamp()
     response = session.get(url, verify=False)
-
     if response.status_code == 200:
         content = response.text
         soup = bs4.BeautifulSoup(content, "html.parser")
@@ -31,6 +37,17 @@ def get_page(url) -> bs4.BeautifulSoup:
         return soup
     else:
         return None
+
+
+def get_url_sitemap(sitemap: str, pattern: str):
+    sitemap_content = open(sitemap, "r").read()
+    source = bs4.BeautifulSoup(sitemap_content, "lxml")
+    locs = source.find_all("loc")
+    urls = []
+    for loc in locs:
+        if (loc.text).find(pattern) != -1:
+            urls.append(loc.text)
+    return urls
 
 
 def get_volume(text: str):
@@ -63,6 +80,15 @@ def get_title(item, classname):
 
 def get_img_src(item, classname):
     return item.find(class_=classname).find("img")["src"]
+
+
+def get_text_block(begin_index, text):
+    if begin_index !=-1:
+        enter = text[begin_index:].find("\n")
+        block = text[begin_index:enter]
+        return block
+    else:
+        return "-"
 
 
 # def set_item():
@@ -1007,7 +1033,7 @@ def get_biomio(data):
     volume_classname = "like__desc"
     title_classname = "like__item-title"
     category_classname = "like__ctg"
-    img_classname = "advantages__left"
+    img_classname = "first-bg-mobile"
 
     page = get_page(url)
     items = page.find_all(class_=items_classname)
@@ -1021,15 +1047,14 @@ def get_biomio(data):
 
         info = page_product.find(class_="wrapper")
 
-        recomend = info.find_all(class_="gal__item")
-        recomend1 = info.find(class_="recomend")
+        recomend = page_product.find_all(class_="gal__item")
+        recomend1 = page_product.find(class_="recomend")
 
         for r in recomend:
             add_info.append(r.text)
         add_info.append(recomend1.text if recomend1 else "")
-
         product = {
-            "Брэнд": "Sodasan",
+            "Брэнд": "Biomio",
             "Наименование товара": name,
             "Категория": item.find(class_=category_classname).text,
             "Серия": "-",
@@ -1038,10 +1063,73 @@ def get_biomio(data):
             "Описание": page_product.find(class_="block__desc").text,
             "Состав": page_product.find(class_="sostav__left").text,
             "Объем": get_volume(item.find(class_=volume_classname).text),
-            "Фото": page_product.find(class_=img_classname).find("img")["src"],
+            "Фото": page_product.find(class_=img_classname).find("img")["data-src"],
             "Дополнительная информация": "\n".join(add_info) if len(add_info) else "-",
             "Ссылка": link,
-            "Ссылка на фото": page_product.find(class_=img_classname).find("img")["src"],
+            "Ссылка на фото": page_product.find(class_=img_classname).find("img")["data-src"],
+        }
+
+        data = data.append(product, ignore_index=True)
+        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+        count += 1
+        print(f"[+] Add {count}")
+
+    return data
+
+
+def get_chocolatte(data):
+    count = 0
+    sitemap = "chocolatte.xml"
+    urls = get_url_sitemap(sitemap, "/product/")
+
+    img_classname = "cimg"
+    name_classname = "title"
+    info_classname = "desc"
+    price_classname = "PricesalesPrice"
+    params_classname = "params-list"
+    category_classname = "breadcrumbs_Breadcrumbs"
+    
+    for url in urls:
+        page_product = get_page(url)
+
+        add_info = []
+        name = page_product.find(class_=name_classname).text
+        img = page_product.find(class_=img_classname)["src"]
+        info = page_product.find(class_=info_classname).text
+        params = page_product.find(class_=params_classname).text
+        price = page_product.find(class_=price_classname).text
+        category = page_product.find(class_=category_classname).text.split(">")[-2]
+
+        addinfo_index = info.find("Условия хранения")
+        use_info_index = info.find("Применение")
+        sostav_index = info.find("Состав")
+        articul_index = params.find("Артикул")
+        brand_index = params.find("Бренд")
+        volume_index = params.find("Объем")
+
+
+        add_info.append(get_text_block(addinfo_index, info))
+        add_info.append(get_text_block(use_info_index, info))
+        sostav = get_text_block(sostav_index, info)
+        articul = get_text_block(articul_index, params)
+        brand = get_text_block(brand_index, params)
+        volume = get_volume(get_text_block(volume_index, params))
+        desc = info.replace(sostav, "")
+
+        product = {
+            "Брэнд": brand,
+            "Наименование товара": name,
+            "Категория": category,
+            "Серия": "-",
+            "Артикул": articul,
+            "Цена": price,
+            "Описание": desc,
+            "Состав": sostav,
+            "Объем": volume,
+            "Фото": img,
+            "Дополнительная информация": "\n".join(add_info) if len(add_info) else "-",
+            "Ссылка": url,
+            "Ссылка на фото": img,
         }
 
         data = data.append(product, ignore_index=True)
@@ -1071,24 +1159,34 @@ def start_parser() -> pd.DataFrame:
     ]
     data = pd.DataFrame(columns=columns)
 
+# ADD IMGAGES
     # data = get_ecl_items(data)
-    data = get_organic_shop(data)
+    # data = get_organic_shop(data) Slider imgtovar
     # data = get_levrana(data)
-    # data = get_miko(data)
+    # data = get_miko(data) bx-pager
     # data = get_craft_cosmetic(data)
     # data = get_organic_zone(data)
     # data = get_innature(data)
-    # data = get_biothal(data)
-    # data = get_dnc(data)
+    # data = get_biothal(data) popup-image
+    # data = get_dnc(data) c-images__slider__img
     # data = get_klar(data)
     # data = get_ecover(data)
     ## data = get_biostudio(data)
     # data = get_sonett(data)
-    # data = get_sodasan(data)
+    # data = get_sodasan(data) get sitemap
     # data = get_biomio(data)
-    # Chocolatte
-    # https://shop.almawin.de/AlmaWin/ Alamwin like Klar
-    # 
+    # Chocolatte https://www.tm-chocolatte.ru/
+    data = get_chocolatte(data)
+    # Almawin https://shop.almawin.de/AlmaWin/ Alamwin like Klar
+    # Ecodoo http://ecodoo.sbazara.ru
+    # Uralsoap
+    # Biomama product class t776__product-full
+    # Wonderlab items class catalog__item
+    # Ecolatier class for check page card-button, max page 6
+    # Molecola https://molecola.ru/produktsiya/
+    # Pure water https://pure-water.me/catalog/
+    # Botavikos https://botavikos.club/catalog/?PAGEN_1=4
+    # Biotheka http://www.biotheka.com/
 
 
     return data
