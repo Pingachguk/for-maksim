@@ -9,7 +9,7 @@ import urllib3
 
 urllib3.disable_warnings()
 
-reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+|[0-9]+[0-9]*[0-9]*\s*(кг)+|[0-9]+[0-9]*[0-9]*\s*(г)+|[0-9]+[0-9]*[0-9]*\s*(g)+|[0-9]+[0-9]*[0-9]*\s*(kg)+"
+reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+|[0-9]+[0-9]*[0-9]*\s*(кг)+|[0-9]+[0-9]*[0-9]*\s*(г)+|[0-9]+[0-9]*[0-9]*\s*(g)+|[0-9]+[0-9]*[0-9]*\s*(kg)+|[0-9]+[0-9]*[0-9]*\s*(шт)+"
 session = requests.Session()
 # adapter = requests.adapters.HTTPAdapter(
 #     pool_connections=100,
@@ -234,7 +234,7 @@ def get_organic_shop(data):
                 item["Наименование товара"] = name
                 item["Брэнд"] = brand
                 item["Артикул"] = articul.replace("Артикул:", "")
-                item["Серия"] = brand_serie.replace("Линия:", "").replace(brand, "")
+                item["Серия"] = brand_serie.replace("Линия:", "").replace(brand, "") if len(brand_serie.replace("Линия:", "").replace(brand, "")) else "-"
                 item["Описание"] = descr.replace("\n", "")
                 item["Состав"] = sostav
                 item["Цена"] = price
