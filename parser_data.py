@@ -10,18 +10,18 @@ import urllib3
 urllib3.disable_warnings()
 
 reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+"
-# session = requests.Session()
+session = requests.Session()
 # adapter = requests.adapters.HTTPAdapter(
 #     pool_connections=100,
 #     pool_maxsize=100)
 # session.mount('http://', adapter)
 # session.mount('https://', adapter)
-# session.verify = False
+session.verify = False
 
 
 def get_page(url) -> bs4.BeautifulSoup:
     time_b = datetime.now().timestamp()
-    response = requests.get(url, verify=False)
+    response = session.get(url, verify=False)
 
     if response.status_code == 200:
         content = response.text
