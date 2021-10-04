@@ -18,8 +18,6 @@ session = requests.Session()
 # session.mount('https://', adapter)
 session.verify = False
 
-http_proxy  = "http://Selandreiyakimov4:A9t7SjV@212.22.73.79:45785"
-https_proxy = "https://Selandreiyakimov4:A9t7SjV@212.22.73.79:45785"
 
 # proxyDict = { 
 #               "http"  : http_proxy, 
