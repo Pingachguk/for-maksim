@@ -1,4 +1,5 @@
 from datetime import datetime
+from logging import info
 import pandas as pd
 import requests
 import bs4
@@ -1205,8 +1206,57 @@ def get_almawin(data):
 
 
 def get_ecodoo(data):
+    count = 0
     url = "http://ecodoo.sbazara.ru/"
+    items_classname = "menu-item"
+    title_classname = "title"
+    img_classsname = "firstBigGoodsImg"
+    price_classname = "num"
+    category_classname = "buttonLink-link"
+    product_classname = "product"
 
+    page = get_page(url)
+    items = page.find_all(class_=items_classname)
+    for item in items:
+        title = get_title(item, title_classname)
+        link = title["href"]
+
+        page_product = get_page(link)
+        product_block = page.find(class_=product_classname)
+
+        name = page_product.find(class_=title_classname).text
+        volume = get_volume(name)
+        img = page_product.find(class_=img_classsname)["src"]
+        price = item.find(class_=price_classname).text
+        brand = "EcoDoo"
+
+        info = page_product.find(itemprop="description").find(class_="pageContent").text
+        sostav = get_text_block(info.find("Состав"), info)
+        use_info = get_text_block(info.find("Способ применения"), info)
+        articul = get_text_block(info.find("Штрих-код"), info).replace("Штрих-код: ", "")
+        descr = info.replace(sostav, "").replace(use_info, "")
+        category = page_product.find(itemprop="description").find_all(class_=category_classname)[0].text
+
+        product = {
+            "Брэнд": brand,
+            "Наименование товара": name,
+            "Категория": category,
+            "Серия": "-",
+            "Артикул": articul,
+            "Цена": price,
+            "Описание": descr,
+            "Состав": sostav,
+            "Объем": volume,
+            "Фото": img,
+            "Дополнительная информация": use_info,
+            "Ссылка": link,
+            "Ссылка на фото": img,
+        }
+        count += 1
+        print(f"[+] Add {count}")
+        data = data.append(product, ignore_index=True)
+        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+    return data
 
 def start_parser() -> pd.DataFrame:
     print("[*] Start parser")
@@ -1228,24 +1278,25 @@ def start_parser() -> pd.DataFrame:
     data = pd.DataFrame(columns=columns)
 
 # ADD IMGAGES
-    data = get_ecl_items(data)
-    data = get_organic_shop(data) #Slider imgtovar
-    data = get_levrana(data)
-    data = get_miko(data) #bx-pager
-    data = get_craft_cosmetic(data)
-    data = get_organic_zone(data)
-    data = get_innature(data)
-    data = get_biothal(data) #popup-image
-    data = get_dnc(data) #c-images__slider__img
-    data = get_klar(data)
-    data = get_ecover(data)
+    # data = get_ecl_items(data)
+    # data = get_organic_shop(data) #Slider imgtovar
+    # data = get_levrana(data)
+    # data = get_miko(data) #bx-pager
+    # data = get_craft_cosmetic(data)
+    # data = get_organic_zone(data)
+    # data = get_innature(data)
+    # data = get_biothal(data) #popup-image
+    # data = get_dnc(data) #c-images__slider__img
+    # data = get_klar(data)
+    # data = get_ecover(data)
     # data = get_biostudio(data)
-    data = get_sonett(data)
-    data = get_sodasan(data) #get sitemap
-    data = get_biomio(data)
-    data = get_chocolatte(data)
-    data = get_almawin(data)
+    # data = get_sonett(data)
+    # data = get_sodasan(data) #get sitemap
+    # data = get_biomio(data)
+    # data = get_chocolatte(data)
+    # data = get_almawin(data)
     # Ecodoo http://ecodoo.sbazara.ru
+    data = get_ecodoo(data)
     # Uralsoap
     # Biomama product class t776__product-full
     # Wonderlab items class catalog__item
