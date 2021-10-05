@@ -5,20 +5,22 @@ import requests
 import bs4
 import re
 import certifi
+from requests.api import get
 import urllib3
 
 
 urllib3.disable_warnings()
 
-reg_volume = r"[0-9]+[0-9]*[0-9]*\s*(мл)+|[0-9]+[0-9]*[0-9]*\s*(ml)+|[0-9]+[0-9]*[0-9]*\s*(l|L)+|[0-9]+[0-9]*[0-9]*\s*(л)+|[0-9]+[0-9]*[0-9]*\s*(кг)+|[0-9]+[0-9]*[0-9]*\s*(г)+|[0-9]+[0-9]*[0-9]*\s*(g)+|[0-9]+[0-9]*[0-9]*\s*(kg)+|[0-9]+[0-9]*[0-9]*\s*(шт)+|[0-9]+[0-9]*[0-9]*\s*(уп)+"
+reg_volume = r"[0-9]+[0-9]*\s*(мл|ml|l|L|л|кг|г|g|kg|уп|шт)|(Вес|Объем).*(мл|ml|l|L|л|кг|г|g|kg|уп|шт).{0,4}[0-9]+"
 session = requests.Session()
-# adapter = requests.adapters.HTTPAdapter(
-#     pool_connections=100,
-#     pool_maxsize=100)
-# session.mount('http://', adapter)
-# session.mount('https://', adapter)
+adapter = requests.adapters.HTTPAdapter(
+    pool_connections=100,
+    pool_maxsize=100)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
 session.verify = False
-
+session.headers["Connection"] = "keep-alive"
+session.headers["User-Agent"] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 YaBrowser/21.8.3.767 (beta) Yowser/2.5 Safari/537.36"
 
 # proxyDict = { 
 #               "http"  : http_proxy, 
@@ -27,7 +29,9 @@ session.verify = False
 
 def get_page(url) -> bs4.BeautifulSoup:
     time_b = datetime.now().timestamp()
-    response = session.get(url, verify=False)
+    print(url)
+    response = session.get(url, verify=False, timeout=5)
+
     if response.status_code == 200:
         content = response.text
         soup = bs4.BeautifulSoup(content, "html.parser")
@@ -91,20 +95,17 @@ def get_text_block(begin_index, text):
         return "-"
 
 
-# def set_item():
-#     item = {
-#         "Наименование товара": name,
-#         "Категория": category,
-#         "Серия": "",
-#         "Артикул": "",
-#         "Цена": "",
-#         "Описание": "",
-#         "Состав": "",
-#         "Фото": "",
-#         "Дополнительная информация": "",
-#         "Ссылка": "",
-#         "Ссылка на фото": "",
-#     }
+def get_slides(block, attr="src", uri=""):
+    result = ""
+    images = block.find_all("img")
+
+    for img in images:
+        if len(uri) > 0:
+            result = uri+img[attr] + " | " 
+        else:
+            result = img[attr] + " | " 
+
+    return result
 
 
 def get_ecl_items(data):
@@ -1233,8 +1234,9 @@ def get_ecodoo(data):
         info = page_product.find(itemprop="description").find(class_="pageContent").text
         sostav = get_text_block(info.find("Состав"), info)
         use_info = get_text_block(info.find("Способ применения"), info)
-        articul = get_text_block(info.find("Штрих-код"), info).replace("Штрих-код: ", "")
-        descr = info.replace(sostav, "").replace(use_info, "")
+        articul = get_text_block(info.find("Штрих-код"), info)
+        descr = info.replace(sostav, "").replace(use_info, "").replace(articul, "")
+        articul = articul.replace("Штрих-код: ", "")
         category = page_product.find(itemprop="description").find_all(class_=category_classname)[0].text
 
         product = {
@@ -1257,6 +1259,379 @@ def get_ecodoo(data):
         data = data.append(product, ignore_index=True)
         data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
     return data
+
+
+def get_uralsoap(data):
+    count = 0
+    sitemap = "uralsoap.xml"
+    urls = get_url_sitemap(sitemap, "/catalog/")
+
+    product_classname = "item_main_info"
+    category_classname = "bx-breadcrumb-item"
+    price_classname = "price_value"
+    info_classname = "desc_tab"
+    prop_classname = "props_list"
+    title_id = "pagetitle"
+    slide_classname = "slides"
+
+    for url in urls:
+        try:
+            int(url.split("/")[-2])
+        except:
+            continue
+        page_product = get_page(url)
+        block = page_product.find(class_=product_classname)
+        if block:
+            print(url)
+
+            props = page_product.find_all(class_=prop_classname)
+            # sostav = get_text_block(0, props[0].text)
+            sostav = "-"
+            value = "-"
+            add_info = "-"
+            for prop in props:
+                if prop.find(class_="props_item").text.find("Состав") != -1:
+                    sostav = prop.text
+                volume = get_volume(prop.text.replace("\n", "").replace("\t", ""))
+            
+            info = page_product.find(class_=info_classname).text if page_product.find(class_=info_classname) else "-"
+            use_info = get_text_block(info.find("Способ применения"), info)
+            descr = info.replace(use_info, "")
+
+            title = page_product.find(id=title_id).text
+            brand = title.split(",")[0]
+
+            price = block.find(class_=price_classname).text
+
+            slides = block.find(class_=slide_classname).find_all("img")
+            photo = ""
+            for slide in slides:
+                photo += "https://uralsoap.ru"+slide["data-src"]+" | "
+
+            category = page_product.find_all(class_=category_classname)[-1].text
+
+            product = {
+                "Брэнд": brand,
+                "Наименование товара": title,
+                "Категория": category,
+                "Серия": "-",
+                "Артикул": "-",
+                "Цена": price,
+                "Описание": descr,
+                "Состав": sostav,
+                "Объем": volume,
+                "Фото": photo,
+                "Дополнительная информация": use_info,
+                "Ссылка": url,
+                "Ссылка на фото": photo,
+            }
+
+            count += 1
+            print(f"[+] Add {count}")
+            data = data.append(product, ignore_index=True)
+            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+
+    return data
+
+
+def get_wonderlab(data):
+    count = 0
+    url = "https://www.wonderlab.ru/catalog/"
+
+    items_classname = "catalog__item"
+    title_classname = "catalog-item__name"
+    descr_classname = "product-info__about"
+    volume_classname = "volume__container"
+    sostav_classname = "composition__container"
+    swiper_classname = "swiper-wrapper"
+
+    page = get_page(url)
+    items = page.find_all(class_=items_classname)
+
+    for item in items:
+        # product_id = item["id"].replace("product", "")
+        # page_product = get_page(url+f"?product={product_id}")
+        name = item.find(class_=title_classname).text
+        add_info = ""
+        for prop in item.find(class_="product-popup__content").find_all(class_="properties__property-item"):
+            add_info += prop.text+" \n"
+        add_info = add_info.replace("100%биоразлагаемый продукт 74патента", "100% биоразлагаемый продукт")
+        descr = item.find(class_="product-popup__content").find(class_=descr_classname).text if item.find(class_="product-popup__content").find(class_=descr_classname) else "-"
+        volume = item.find(class_=volume_classname).text
+        sostav = item.find(class_=sostav_classname).text
+        price = "-"
+        articul = "-"
+        images = "https://www.wonderlab.ru"+item.find(class_="catalog-item__picture")["src"]
+
+
+        product = {
+            "Брэнд": "Wonder",
+            "Наименование товара": name,
+            "Категория": item["data-category"],
+            "Серия": "-",
+            "Артикул": "-",
+            "Цена": price,
+            "Описание": descr,
+            "Состав": sostav,
+            "Объем": volume,
+            "Фото": images,
+            "Дополнительная информация": add_info,
+            "Ссылка": "https://www.wonderlab.ru/catalog/",
+            "Ссылка на фото": images,
+        }
+
+        count += 1
+        print(f"[+] Add {count}")
+        data = data.append(product, ignore_index=True)
+        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+
+    return data
+
+
+def get_ecolatier(data):
+    count = 0
+    uri = "https://ecolatier.ru"
+
+    urls = {
+        "Для волос": "http://ecolatier.ru/catalog/dlya_volos/",
+        "Для лица": "http://ecolatier.ru/catalog/dlya_litsa/",
+        "Для тела": "http://ecolatier.ru/catalog/dlya_tela/",
+        "Для детей": "http://ecolatier.ru/catalog/dlya-detey/",
+        "Для мужчин": "http://ecolatier.ru/catalog/dlya_muzhchin/",
+        "Для интимной гигиены": "http://ecolatier.ru/catalog/dlya_intimnoy_gigieny/",
+        "Для антибактериальной защиты": "http://ecolatier.ru/catalog/dlya_antibacterialnoy_zashity/",
+    }
+
+    item_classname = "item-wrap"
+    page_classname = "pages-wrap"
+
+    for cat, url in urls.items():
+        page = get_page(url)
+        pagination = page.find(class_=page_classname)
+
+        if pagination:
+            max_page = len(pagination.find_all("a"))+2
+        else:
+            max_page = 2
+
+        for num in range(1, max_page):
+            page = paginator(url+"?page={}", num)
+            items = page.find_all(class_=item_classname)
+            for item in items:
+                pass
+    return data
+
+
+def get_molecola(data):
+    count = 0
+    url = "http://molecola.ru/produktsiya"
+    uri = "http://molecola.ru"
+
+    page = get_page(url)
+
+    catalog_classname = "page-content"
+    subcatalog_classname = "sppb-section"
+    category_classname = "sppb-addon-content" # h2
+    item_classname = "sppb-column"
+    link_classname = "sppb-pricing-footer"
+    info_classname = "sppb-tab-tabs-content"
+    descr_classname = "sppb-addon-text-block sppb-text-left"
+
+    # catalog = page.find(id="column-wrap-id-1539824772971")
+    # print(catalog)
+    # subcatalogs = catalog.find(class_="sppb-container-inner").find_all(class_="sppb-col-md-4")
+
+    subcatalogs = []
+    subcatalogs.append(page.find(id="column-wrap-id-1539824772971"))
+    subcatalogs.append(page.find(id="column-wrap-id-1575993095689"))
+    subcatalogs.append(page.find(id="column-wrap-id-1575994640241"))
+    subcatalogs.append(page.find(id="column-wrap-id-1575994641047"))
+    subcatalogs.append(page.find(id="column-wrap-id-1576003981829"))
+    subcatalogs.append(page.find(id="column-wrap-id-1576078828142"))
+    max_items = 12
+
+    for sub in subcatalogs:
+        category = sub.find(class_=category_classname).text
+        items = sub.find_all(class_=item_classname)
+        # print(items[0])
+
+        for item in items:
+            try:
+                add_name = item.find(class_="sppb-pricing-duration").text if item.find(class_="sppb-pricing-duration") else ""
+                name = item.find("h3", class_="sppb-pricing-title").text+" "+add_name
+                link = item.find(class_=link_classname).find("a")["href"]
+
+                print(link)
+                page_product = get_page(uri+link)
+                photo = page_product.find(class_="sppb-addon-single-image-container").find("img")["src"]
+                # print(page_product.find_all(class_="sppb-row-container")[0].text)
+                descr = page_product.find_all(class_="sppb-row-container")[0].text if page_product.find(class_=descr_classname) else "-"
+                sostav = page_product.find_all(class_="sppb-tab-pane")[0].text
+                product = {
+                    "Брэнд": "Molecola",
+                    "Наименование товара": name,
+                    "Категория": category,
+                    "Серия": "-",
+                    "Артикул": "-",
+                    "Цена": "-",
+                    "Описание": descr,
+                    "Состав": sostav,
+                    "Объем": "-",
+                    "Фото": uri+photo if photo.find(uri) == -1 else photo,
+                    "Дополнительная информация": page_product.find_all(class_="sppb-tab-pane")[1].text,
+                    "Ссылка": uri+link,
+                    "Ссылка на фото": uri+photo if photo.find(uri) == -1 else photo,
+                }
+
+                count += 1
+                print(f"[+] Add {count}")
+                data = data.append(product, ignore_index=True)
+                data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+            except Exception as e:
+                print(e)
+
+    return data
+
+
+def get_purewater(data):
+    count = 0
+    url = "https://pure-water.me/catalog/"
+    uri = "https://pure-water.me"
+
+    catalog_classname = "h1_banner"
+    category_tag = "h1"
+
+    page = get_page(url)
+
+    catalogs = page.find_all(class_=catalog_classname)
+    sections = page.find_all("section")
+
+    items_section = []
+    items_section.append(sections[1])
+    items_section.append(sections[3])
+    items_section.append(sections[5])
+
+    i = 0
+    for catalog in catalogs:
+        category = catalog.find(category_tag).text
+        # print(items_section[i])
+        items = items_section[i].find_all("a", class_="li")
+        print(len(items))
+        for item in items:
+
+            name = item.find(class_="lc_h").text
+            volume = get_volume(name)
+            link = item["href"]
+
+            page_product = get_page(uri+link)
+            price = page_product.find(class_="fz_30 c_b52 mr_80 tab_mr_20 mob_mr_40 ws_now mob_mr_0 mob_w_100").text
+
+            info_page = page_product.find_all(class_="user_content")
+            sostav = info_page[0].text
+            descr = info_page[1].text
+            add_info = info_page[2].text
+            img = page_product.find(class_="sg_item").find("img")["src"]
+
+            product = {
+                "Брэнд": "Pure Water",
+                "Наименование товара": name,
+                "Категория": category,
+                "Серия": "-",
+                "Артикул": "-",
+                "Цена": price,
+                "Описание": descr,
+                "Состав": sostav,
+                "Объем": volume,
+                "Фото": uri+img,
+                "Дополнительная информация": add_info,
+                "Ссылка": uri+link,
+                "Ссылка на фото": uri+img,
+            }
+
+            count += 1
+            print(f"[+] Add {count}")
+            data = data.append(product, ignore_index=True)
+            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+        i += 1
+
+
+    return data
+
+
+def get_botavikos(data):
+    count = 0
+    url = "https://botavikos.club/catalog/?PAGEN_1={}"
+    uri = "https://botavikos.club"
+    max_page = 16
+
+    slider_classname = "productSlider__sliderTop"
+    items_classname = "category__card"
+
+    for i in range(1, max_page+1):
+        page = paginator(url, i)
+        items = page.find_all(class_=items_classname)
+        for item in items:
+            name = item.find(class_="cardProduct__name").text
+            price = item.find(class_="productPrice").text
+            link = item.find(class_="cardProduct__name").find("a")["href"]
+
+            page_product = get_page(uri+link)
+            # productTabs__content - content tabs
+            # productTabs__item - title tabs
+            title_tabs = page_product.find_all(class_="productTabs__item")
+            content_tabs = page_product.find_all(class_="productTabs__tab")
+            i = 0
+            sostav_index = -1
+            for title in title_tabs:
+                if title.text.find("Состав") != -1:
+                    sostav_index = i
+                    break
+                i += 1
+            sostav = "-"
+            if sostav_index != -1:
+                sostav = content_tabs[sostav_index].text
+            
+            i = 0
+            char_index = -1
+            for title in title_tabs:
+                if title.text.find("Характеристики") != -1:
+                    char_index = i
+                    break
+                i += 1
+            volume = "-"
+            if char_index != -1:
+                volume = get_volume(content_tabs[char_index].text)
+
+            descr = content_tabs[0].text
+            category = page_product.find_all(class_="bread__item")[-2].text.replace("|", "")
+
+            try:
+                slides = get_slides(page_product.find(class_=slider_classname), uri=uri)
+            except:
+                slides = page_product.find(class_="product__slider").find("img")["src"] + " | "
+
+            product = {
+                "Брэнд": "Pure Water",
+                "Наименование товара": name,
+                "Категория": category,
+                "Серия": "-",
+                "Артикул": "-",
+                "Цена": price,
+                "Описание": descr,
+                "Состав": sostav,
+                "Объем": volume,
+                "Фото": slides,
+                "Дополнительная информация": "-",
+                "Ссылка": uri+link,
+                "Ссылка на фото": slides,
+            }
+            data = data.append(product, ignore_index=True)
+            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+            count += 1
+            print(f"[+] Add {count}")
+
+    return data
+
 
 def start_parser() -> pd.DataFrame:
     print("[*] Start parser")
@@ -1295,15 +1670,20 @@ def start_parser() -> pd.DataFrame:
     # data = get_biomio(data)
     # data = get_chocolatte(data)
     # data = get_almawin(data)
-    # Ecodoo http://ecodoo.sbazara.ru
-    data = get_ecodoo(data)
-    # Uralsoap
+    # data = get_ecodoo(data)
+    # data = get_uralsoap(data)
+    # data = get_wonderlab(data)
+
     # Biomama product class t776__product-full
-    # Wonderlab items class catalog__item
+    # data = 
+    
     # Ecolatier class for check page card-button, max page 6
-    # Molecola https://molecola.ru/produktsiya/
-    # Pure water https://pure-water.me/catalog/
+    # data = get_ecolatier(data)
+    
+    # data = get_molecola(data)
+    # data = get_purewater(data)
     # Botavikos https://botavikos.club/catalog/?PAGEN_1=4
+    data = get_botavikos(data)
     # Biotheka http://www.biotheka.com/
 
 
