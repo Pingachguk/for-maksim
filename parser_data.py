@@ -1580,29 +1580,34 @@ def get_botavikos(data):
             # productTabs__item - title tabs
             title_tabs = page_product.find_all(class_="productTabs__item")
             content_tabs = page_product.find_all(class_="productTabs__tab")
-            i = 0
-            sostav_index = -1
-            for title in title_tabs:
-                if title.text.find("Состав") != -1:
-                    sostav_index = i
-                    break
-                i += 1
-            sostav = "-"
-            if sostav_index != -1:
-                sostav = content_tabs[sostav_index].text
-            
-            i = 0
-            char_index = -1
-            for title in title_tabs:
-                if title.text.find("Характеристики") != -1:
-                    char_index = i
-                    break
-                i += 1
-            volume = "-"
-            if char_index != -1:
-                volume = get_volume(content_tabs[char_index].text)
+            if len(content_tabs):
+                i = 0
+                sostav_index = -1
+                for title in title_tabs:
+                    if title.text.find("Состав") != -1:
+                        sostav_index = i
+                        break
+                    i += 1
+                sostav = "-"
+                if sostav_index != -1:
+                    sostav = content_tabs[sostav_index].text
+                
+                i = 0
+                char_index = -1
+                for title in title_tabs:
+                    if title.text.find("Характеристики") != -1:
+                        char_index = i
+                        break
+                    i += 1
+                volume = "-"
+                if char_index != -1:
+                    volume = get_volume(content_tabs[char_index].text)
 
-            descr = content_tabs[0].text
+                descr = content_tabs[0].text
+            else:
+                sostav = "-"
+                descr = "-"
+                volume = "-"
             category = page_product.find_all(class_="bread__item")[-2].text.replace("|", "")
 
             try:
