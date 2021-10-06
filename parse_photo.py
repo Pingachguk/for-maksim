@@ -39,6 +39,8 @@ for index, item in df.iterrows():
             photo = massiv_photo[0]
             url = check_url(photo)
             filetype = photo.split(".")[-1]
+            if filetype.find("?") != -1:
+                filetype = filetype[:filetype.find("?")]
             begin = datetime.now().timestamp()
             content = session.get(url).content
             name = f"photo/{i}_{j}.{filetype}"
@@ -56,6 +58,8 @@ for index, item in df.iterrows():
         photo = massiv_photo[0]
         url = check_url(photo)
         filetype = photo.split(".")[-1]
+        if filetype.find("?") != -1:
+            filetype = filetype[:filetype.find("?")]
         begin = datetime.now().timestamp()
         content = session.get(url).content
         name = f"photo/{i}.{filetype}"
