@@ -30,7 +30,10 @@ session.headers["User-Agent"] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537
 def get_page(url) -> bs4.BeautifulSoup:
     time_b = datetime.now().timestamp()
     print(url)
-    response = session.get(url, verify=False, timeout=5)
+    try:
+        response = session.get(url, verify=False)
+    except:
+        return None
 
     if response.status_code == 200:
         content = response.text
