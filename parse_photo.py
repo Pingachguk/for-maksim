@@ -12,5 +12,6 @@ for img in images:
     filetype = img.split(".")[-1]
     content = requests.get(img).content
     f = open(f"1.{filetype}", "wb")
-    f.write()
+    f.write(content)
+    f.close()
 

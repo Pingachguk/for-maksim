@@ -104,7 +104,7 @@ def get_slides(block, attr="src", uri="", itemprop=None):
             result = result+uri+img[attr] + " | " 
         else:
             result = result+img[attr] + " | " 
-    print(result)
+    # print(result)
     return result
 
 
@@ -233,7 +233,8 @@ def get_organic_shop(data):
 
             page = get_page(uri+link)
             if page:
-                slides = get_slides(page.find_all(class_="slick-track")[0], uri=uri)
+                # print(page.find(class_="sliderimgtovar").find_all(class_="img"))
+                slides = get_slides(page.find(class_="sliderimgtovar"), uri=uri)
                 time_begin = datetime.now().timestamp()
                 if page.find(class_="info"):
                     info = page.find(class_="info")
@@ -1718,7 +1719,7 @@ def start_parser() -> pd.DataFrame:
     data = pd.DataFrame(columns=columns)
 
 # ADD IMGAGES
-    data = get_ecl_items(data)
+    # data = get_ecl_items(data)
     data = get_organic_shop(data)
     data = get_levrana(data)
     data = get_miko(data)
@@ -1729,7 +1730,6 @@ def start_parser() -> pd.DataFrame:
     data = get_dnc(data)
     data = get_klar(data)
     data = get_ecover(data)
-    data = get_biostudio(data)
     data = get_sonett(data)
     data = get_sodasan(data)
     data = get_biomio(data)
@@ -1743,6 +1743,7 @@ def start_parser() -> pd.DataFrame:
     data = get_botavikos(data)
     data = get_biotheka(data)
 
+    # data = get_biostudio(data)
     # Biomama product class t776__product-full
     # data = 
     # Ecolatier class for check page card-button, max page 6
