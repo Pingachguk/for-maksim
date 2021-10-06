@@ -11,12 +11,11 @@ if not "Путь к фото" in df.columns:
     df["Путь к фото"] = "-"
 
 session = requests.Session()
-adapter = requests.adapters.HTTPAdapter(
-    pool_connections=100,
-    pool_maxsize=100)
-session.mount('http://', adapter)
-session.mount('https://', adapter)
-session.verify = False
+# adapter = requests.adapters.HTTPAdapter(
+#     pool_connections=100,
+#     pool_maxsize=100)
+# session.mount('http://', adapter)
+# session.mount('https://', adapter)
 session.headers["Connection"] = "keep-alive"
 session.headers["User-Agent"] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 YaBrowser/21.8.3.767 (beta) Yowser/2.5 Safari/537.36"
 session.verify = False
