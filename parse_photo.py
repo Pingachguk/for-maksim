@@ -21,7 +21,7 @@ session.headers["User-Agent"] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537
 session.verify = False
 
 def check_url(url):
-    if url.find("http") != url.find("http"):
+    if url.find("http") != url.rfind("http"):
         return url[url.rfind("http"):]
     return url
 
