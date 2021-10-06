@@ -11,7 +11,7 @@ import urllib3
 
 urllib3.disable_warnings()
 
-reg_volume = r"[0-9]+[0-9]*\s*(мл|ml|l|L|л|кг|г|g|kg|уп|шт)|(Вес|Объем).*(мл|ml|l|L|л|кг|г|g|kg|уп|шт).{0,4}[0-9]+"
+reg_volume = r"[0-9]+[0-9]*\s*(мл|ml|l|L|л|кг|г|g|kg|уп|шт|Kapseln)|(Вес|Объем).*(мл|ml|l|L|л|кг|г|g|kg|уп|шт).{0,4}[0-9]+"
 session = requests.Session()
 adapter = requests.adapters.HTTPAdapter(
     pool_connections=100,
@@ -95,16 +95,16 @@ def get_text_block(begin_index, text):
         return "-"
 
 
-def get_slides(block, attr="src", uri=""):
+def get_slides(block, attr="src", uri="", itemprop=None):
     result = ""
     images = block.find_all("img")
 
     for img in images:
         if len(uri) > 0:
-            result = uri+img[attr] + " | " 
+            result = result+uri+img[attr] + " | " 
         else:
-            result = img[attr] + " | " 
-
+            result = result+img[attr] + " | " 
+    print(result)
     return result
 
 
@@ -229,10 +229,11 @@ def get_organic_shop(data):
             else:
                 brand = "-"
             
-            photo = row.find(class_="firstp")["src"]
+            # photo = row.find(class_="firstp")["src"]
 
             page = get_page(uri+link)
             if page:
+                slides = get_slides(page.find_all(class_="slick-track")[0], uri=uri)
                 time_begin = datetime.now().timestamp()
                 if page.find(class_="info"):
                     info = page.find(class_="info")
@@ -256,7 +257,7 @@ def get_organic_shop(data):
                     volume = "-"
 
 
-                item["Фото"] = photo
+                item["Фото"] = slides
                 item["Категория"] = page.find_all(class_="breadcrumb-item")[-1].text
                 item["Наименование товара"] = name
                 item["Брэнд"] = brand
@@ -267,7 +268,7 @@ def get_organic_shop(data):
                 item["Цена"] = price
                 item["Дополнительная информация"] = instr
                 item["Ссылка"] = uri+link
-                item["Ссылка на фото"] = uri+photo
+                item["Ссылка на фото"] = slides
                 item["Объем"] = volume
                 count += 1
                 if not (brand in brands.keys()):
@@ -382,30 +383,31 @@ def get_miko(data):
         catalog = get_catalog(page, catalog_classname)
         items = get_items(catalog, product_classname)
         for product in items:
-            try:
-                link = product.find("a", class_=product_link_classname)["href"]
-                page_product = get_page(uri+link)
-                item = {
-                    "Брэнд": "miko",
-                    "Наименование товара": product.find(class_=title_classname).text.replace('\n', ''),
-                    "Категория": page_product.find_all(class_=category_classname)[-2].text.replace('\n', ''),
-                    "Серия": "-",
-                    "Артикул": "-",
-                    "Цена": product.find(class_=price_classname).text.replace('\n', ''),
-                    "Описание": page_product.find_all(class_=descr_classname)[0].text.replace('\n', ''),
-                    "Состав": page_product.find(class_=sostav_classname).text.replace('\n', ''),
-                    "Фото": product.find(class_=img_classname).find("img")["src"],
-                    "Дополнительная информация": page_product.find_all(class_=descr_classname)[2].text.replace('\n', ''),
-                    "Ссылка": uri+link,
-                    "Ссылка на фото": uri+product.find(class_=img_classname).find("img")["src"],
-                    "Объем": get_volume(product.find(class_=title_classname).text.replace('\n', ''))
-                }
-                count += 1
-                print(f"[+] Add {count}")
-                data = data.append(item, ignore_index=True)
-                data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
-            except Exception as e:
-                print(e)
+            link = product.find("a", class_=product_link_classname)["href"]
+            page_product = get_page(uri+link)
+
+            slides = get_slides(page_product.find(id="bx-pager"), uri=uri)
+            print(slides)
+            item = {
+                "Брэнд": "miko",
+                "Наименование товара": product.find(class_=title_classname).text.replace('\n', ''),
+                "Категория": page_product.find_all(class_=category_classname)[-2].text.replace('\n', ''),
+                "Серия": "-",
+                "Артикул": "-",
+                "Цена": product.find(class_=price_classname).text.replace('\n', ''),
+                "Описание": page_product.find_all(class_=descr_classname)[0].text.replace('\n', ''),
+                "Состав": page_product.find(class_=sostav_classname).text.replace('\n', ''),
+                "Фото": slides,
+                "Дополнительная информация": page_product.find_all(class_=descr_classname)[2].text.replace('\n', ''),
+                "Ссылка": uri+link,
+                "Ссылка на фото": slides,
+                "Объем": get_volume(product.find(class_=title_classname).text.replace('\n', ''))
+            }
+            count += 1
+            print(f"[+] Add {count}")
+            data = data.append(item, ignore_index=True)
+            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+
     return data
 
 
@@ -638,6 +640,7 @@ def get_biothal(data):
             for item in items:
                 url = item.find(class_=img_classname).find("a")["href"]
                 page_product = get_page(url)
+                slides = get_slides(page_product.find(class_="thumbnails-left"))
                 product = {
                     "Брэнд": "BIOTHAL",
                     "Наименование товара": item.find(class_=title_classname).text,
@@ -648,7 +651,7 @@ def get_biothal(data):
                     "Описание": page_product.find(id=descr_id).text.replace('\n', ''),
                     "Состав": page_product.find(id=sostav_id).text.replace('\n', ''),
                     "Объем": get_volume(page_product.find(class_=cart_classname).text),
-                    "Фото": get_img_src(page_product, img_classname2),
+                    "Фото": get_img_src(page_product, img_classname2)+" | "+slides,
                     "Дополнительная информация": page_product.find(id=addinfo_id).text.replace('\n', ''),
                     "Ссылка": url,
                     "Ссылка на фото": uri+get_img_src(page_product, img_classname2),
@@ -686,6 +689,8 @@ def get_dnc(data):
                 url = item.find(class_=title_classname)["href"]
                 page_product = get_page(url)
 
+                slides = get_slides(page_product.find(class_="main-product-slide"))
+
                 info = page_product.find(class_=info_classname).text.replace('\n', '')
                 sostav = info[info.find("Состав"):len(info)-1]
                 descr = info[0:info.find("Состав")]
@@ -700,10 +705,10 @@ def get_dnc(data):
                     "Описание": descr,
                     "Состав": sostav,
                     "Объем": get_volume(descr),
-                    "Фото": get_img_src(item, img_classname),
+                    "Фото": slides,
                     "Дополнительная информация": "-",
                     "Ссылка": url,
-                    "Ссылка на фото": item.find(class_="c-goods__img").find("img")["src"],
+                    "Ссылка на фото": slides,
                 }
                 count += 1
                 print(f"[+] Add {count}")
@@ -1612,11 +1617,13 @@ def get_botavikos(data):
 
             try:
                 slides = get_slides(page_product.find(class_=slider_classname), uri=uri)
+                if slides == uri:
+                    slides = "-"
             except:
                 slides = page_product.find(class_="product__slider").find("img")["src"] + " | "
 
             product = {
-                "Брэнд": "Pure Water",
+                "Брэнд": "Botavikos",
                 "Наименование товара": name,
                 "Категория": category,
                 "Серия": "-",
@@ -1634,6 +1641,59 @@ def get_botavikos(data):
             data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
             count += 1
             print(f"[+] Add {count}")
+
+    return data
+
+
+def get_biotheka(data):
+    count = 0
+    url = "http://www.biotheka.com/"
+    page = get_page(url)
+
+    catalogs_classname = "boxwrapper"
+    items_classname = "productData"
+    catalogs = page.find_all(class_=catalogs_classname)
+    for catalog in catalogs:
+        category = catalog.find(class_="page-header").text
+        items = catalog.find_all(class_=items_classname)
+        for item in items:
+            title = item.find(class_="title")
+            name = title.text
+            link = title.find("a")["href"]
+            volume = get_volume(name)
+            price = item.find(class_="lead").text
+
+            descr = ""
+            page_product = get_page(link)
+            descr_dirty = page_product.find(class_="tab-content").find(id="tab_1").find_all("p")
+            for p in descr_dirty:
+                descr.join(p.text)
+            info_prod = page_product.find(class_="details-col-middle").text
+            articul_index = info_prod.find("Artikelnummer:")
+            articul = get_text_block(articul_index, info_prod).replace("Artikelnummer", "")
+            img = page_product.find(class_="detailsInfo").find("img")["src"]
+
+            product = {
+                "Брэнд": page_product.find(class_="brandLogo").find("a")["title"],
+                "Наименование товара": name,
+                "Категория": category,
+                "Серия": "-",
+                "Артикул": articul,
+                "Цена": price,
+                "Описание": descr,
+                "Состав": "-",
+                "Объем": volume,
+                "Фото": img,
+                "Дополнительная информация": "-",
+                "Ссылка": link,
+                "Ссылка на фото": img,
+            }
+
+            count += 1
+            print(f"[+] Add {count}")
+            data = data.append(product, ignore_index=True)
+            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+
 
     return data
 
@@ -1658,38 +1718,35 @@ def start_parser() -> pd.DataFrame:
     data = pd.DataFrame(columns=columns)
 
 # ADD IMGAGES
-    # data = get_ecl_items(data)
-    # data = get_organic_shop(data) #Slider imgtovar
-    # data = get_levrana(data)
-    # data = get_miko(data) #bx-pager
-    # data = get_craft_cosmetic(data)
-    # data = get_organic_zone(data)
-    # data = get_innature(data)
-    # data = get_biothal(data) #popup-image
-    # data = get_dnc(data) #c-images__slider__img
-    # data = get_klar(data)
-    # data = get_ecover(data)
-    # data = get_biostudio(data)
-    # data = get_sonett(data)
-    # data = get_sodasan(data) #get sitemap
-    # data = get_biomio(data)
-    # data = get_chocolatte(data)
-    # data = get_almawin(data)
-    # data = get_ecodoo(data)
-    # data = get_uralsoap(data)
-    # data = get_wonderlab(data)
+    data = get_ecl_items(data)
+    data = get_organic_shop(data)
+    data = get_levrana(data)
+    data = get_miko(data)
+    data = get_craft_cosmetic(data)
+    data = get_organic_zone(data)
+    data = get_innature(data)
+    data = get_biothal(data)
+    data = get_dnc(data)
+    data = get_klar(data)
+    data = get_ecover(data)
+    data = get_biostudio(data)
+    data = get_sonett(data)
+    data = get_sodasan(data)
+    data = get_biomio(data)
+    data = get_chocolatte(data)
+    data = get_almawin(data)
+    data = get_ecodoo(data)
+    data = get_uralsoap(data)
+    data = get_wonderlab(data)
+    data = get_molecola(data)
+    data = get_purewater(data)
+    data = get_botavikos(data)
+    data = get_biotheka(data)
 
     # Biomama product class t776__product-full
     # data = 
-    
     # Ecolatier class for check page card-button, max page 6
     # data = get_ecolatier(data)
-    
-    # data = get_molecola(data)
-    # data = get_purewater(data)
-    # Botavikos https://botavikos.club/catalog/?PAGEN_1=4
-    data = get_botavikos(data)
-    # Biotheka http://www.biotheka.com/
 
 
     return data

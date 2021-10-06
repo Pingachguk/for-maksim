@@ -26,6 +26,8 @@ def clear():
         for col in columns:
             data.loc[index, col] = re.sub(r"(_x005F_x000D_)", " ", str(item[col]))
             data.loc[index, col] = re.sub(r"(_x000D_)", " ", str(item[col]))
+            data.loc[index, col] = re.sub(r"\s{2,}", "", str(item[col]))
+            # data.loc[index, col] = re.sub(r"^\s", " ", str(item[col]))
             data.loc[index, col] = re.sub(r" +", " ", str(item[col]))
             data.loc[index, col] = re.sub(r"\t+", "", str(item[col]))
             data.loc[index, col] = re.sub(r"\n+", "", str(item[col]))
