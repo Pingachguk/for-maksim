@@ -1363,39 +1363,42 @@ def get_wonderlab(data):
     for item in items:
         # product_id = item["id"].replace("product", "")
         # page_product = get_page(url+f"?product={product_id}")
-        name = item.find(class_=title_classname).text
-        add_info = ""
-        for prop in item.find(class_="product-popup__content").find_all(class_="properties__property-item"):
-            add_info += prop.text+" \n"
-        add_info = add_info.replace("100%биоразлагаемый продукт 74патента", "100% биоразлагаемый продукт")
-        descr = item.find(class_="product-popup__content").find(class_=descr_classname).text if item.find(class_="product-popup__content").find(class_=descr_classname) else "-"
-        volume = item.find(class_=volume_classname).text
-        sostav = item.find(class_=sostav_classname).text
-        price = "-"
-        articul = "-"
-        images = "https://www.wonderlab.ru"+item.find(class_="catalog-item__picture")["src"]
+        try:
+            name = item.find(class_=title_classname).text
+            add_info = ""
+            for prop in item.find(class_="product-popup__content").find_all(class_="properties__property-item"):
+                add_info += prop.text+" \n"
+            add_info = add_info.replace("100%биоразлагаемый продукт 74патента", "100% биоразлагаемый продукт")
+            descr = item.find(class_="product-popup__content").find(class_=descr_classname).text if item.find(class_="product-popup__content").find(class_=descr_classname) else "-"
+            volume = item.find(class_=volume_classname).text
+            sostav = item.find(class_=sostav_classname).text
+            price = "-"
+            articul = "-"
+            images = "https://www.wonderlab.ru"+item.find(class_="catalog-item__picture")["src"]
 
 
-        product = {
-            "Брэнд": "Wonder",
-            "Наименование товара": name,
-            "Категория": item["data-category"],
-            "Серия": "-",
-            "Артикул": "-",
-            "Цена": price,
-            "Описание": descr,
-            "Состав": sostav,
-            "Объем": volume,
-            "Фото": images,
-            "Дополнительная информация": add_info,
-            "Ссылка": "https://www.wonderlab.ru/catalog/",
-            "Ссылка на фото": images,
-        }
+            product = {
+                "Брэнд": "Wonder",
+                "Наименование товара": name,
+                "Категория": item["data-category"],
+                "Серия": "-",
+                "Артикул": "-",
+                "Цена": price,
+                "Описание": descr,
+                "Состав": sostav,
+                "Объем": volume,
+                "Фото": images,
+                "Дополнительная информация": add_info,
+                "Ссылка": "https://www.wonderlab.ru/catalog/",
+                "Ссылка на фото": images,
+            }
 
-        count += 1
-        print(f"[+] Add {count}")
-        data = data.append(product, ignore_index=True)
-        data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+            count += 1
+            print(f"[+] Add {count}")
+            data = data.append(product, ignore_index=True)
+            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+        except:
+            pass
 
     return data
 
@@ -1530,40 +1533,42 @@ def get_purewater(data):
         items = items_section[i].find_all("a", class_="li")
         print(len(items))
         for item in items:
+            try:
+                name = item.find(class_="lc_h").text
+                volume = get_volume(name)
+                link = item["href"]
 
-            name = item.find(class_="lc_h").text
-            volume = get_volume(name)
-            link = item["href"]
+                page_product = get_page(uri+link)
+                price = page_product.find(class_="fz_30 c_b52 mr_80 tab_mr_20 mob_mr_40 ws_now mob_mr_0 mob_w_100").text
 
-            page_product = get_page(uri+link)
-            price = page_product.find(class_="fz_30 c_b52 mr_80 tab_mr_20 mob_mr_40 ws_now mob_mr_0 mob_w_100").text
+                info_page = page_product.find_all(class_="user_content")
+                sostav = info_page[0].text
+                descr = info_page[1].text
+                add_info = info_page[2].text
+                img = page_product.find(class_="sg_item").find("img")["src"]
 
-            info_page = page_product.find_all(class_="user_content")
-            sostav = info_page[0].text
-            descr = info_page[1].text
-            add_info = info_page[2].text
-            img = page_product.find(class_="sg_item").find("img")["src"]
+                product = {
+                    "Брэнд": "Pure Water",
+                    "Наименование товара": name,
+                    "Категория": category,
+                    "Серия": "-",
+                    "Артикул": "-",
+                    "Цена": price,
+                    "Описание": descr,
+                    "Состав": sostav,
+                    "Объем": volume,
+                    "Фото": uri+img,
+                    "Дополнительная информация": add_info,
+                    "Ссылка": uri+link,
+                    "Ссылка на фото": uri+img,
+                }
 
-            product = {
-                "Брэнд": "Pure Water",
-                "Наименование товара": name,
-                "Категория": category,
-                "Серия": "-",
-                "Артикул": "-",
-                "Цена": price,
-                "Описание": descr,
-                "Состав": sostav,
-                "Объем": volume,
-                "Фото": uri+img,
-                "Дополнительная информация": add_info,
-                "Ссылка": uri+link,
-                "Ссылка на фото": uri+img,
-            }
-
-            count += 1
-            print(f"[+] Add {count}")
-            data = data.append(product, ignore_index=True)
-            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+                count += 1
+                print(f"[+] Add {count}")
+                data = data.append(product, ignore_index=True)
+                data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+            except:
+                pass
         i += 1
 
 
@@ -1580,74 +1585,77 @@ def get_botavikos(data):
     items_classname = "category__card"
 
     for i in range(1, max_page+1):
-        page = paginator(url, i)
-        items = page.find_all(class_=items_classname)
-        for item in items:
-            name = item.find(class_="cardProduct__name").text
-            price = item.find(class_="productPrice").text
-            link = item.find(class_="cardProduct__name").find("a")["href"]
+        try:
+            page = paginator(url, i)
+            items = page.find_all(class_=items_classname)
+            for item in items:
+                name = item.find(class_="cardProduct__name").text
+                price = item.find(class_="productPrice").text
+                link = item.find(class_="cardProduct__name").find("a")["href"]
 
-            page_product = get_page(uri+link)
-            # productTabs__content - content tabs
-            # productTabs__item - title tabs
-            title_tabs = page_product.find_all(class_="productTabs__item")
-            content_tabs = page_product.find_all(class_="productTabs__tab")
-            if len(content_tabs):
-                i = 0
-                sostav_index = -1
-                for title in title_tabs:
-                    if title.text.find("Состав") != -1:
-                        sostav_index = i
-                        break
-                    i += 1
-                sostav = "-"
-                if sostav_index != -1:
-                    sostav = content_tabs[sostav_index].text
-                
-                i = 0
-                char_index = -1
-                for title in title_tabs:
-                    if title.text.find("Характеристики") != -1:
-                        char_index = i
-                        break
-                    i += 1
-                volume = "-"
-                if char_index != -1:
-                    volume = get_volume(content_tabs[char_index].text)
+                page_product = get_page(uri+link)
+                # productTabs__content - content tabs
+                # productTabs__item - title tabs
+                title_tabs = page_product.find_all(class_="productTabs__item")
+                content_tabs = page_product.find_all(class_="productTabs__tab")
+                if len(content_tabs):
+                    i = 0
+                    sostav_index = -1
+                    for title in title_tabs:
+                        if title.text.find("Состав") != -1:
+                            sostav_index = i
+                            break
+                        i += 1
+                    sostav = "-"
+                    if sostav_index != -1:
+                        sostav = content_tabs[sostav_index].text
+                    
+                    i = 0
+                    char_index = -1
+                    for title in title_tabs:
+                        if title.text.find("Характеристики") != -1:
+                            char_index = i
+                            break
+                        i += 1
+                    volume = "-"
+                    if char_index != -1:
+                        volume = get_volume(content_tabs[char_index].text)
 
-                descr = content_tabs[0].text
-            else:
-                sostav = "-"
-                descr = "-"
-                volume = "-"
-            category = page_product.find_all(class_="bread__item")[-2].text.replace("|", "")
+                    descr = content_tabs[0].text
+                else:
+                    sostav = "-"
+                    descr = "-"
+                    volume = "-"
+                category = page_product.find_all(class_="bread__item")[-2].text.replace("|", "")
 
-            try:
-                slides = get_slides(page_product.find(class_=slider_classname), uri=uri)
-                if slides == uri:
-                    slides = "-"
-            except:
-                slides = page_product.find(class_="product__slider").find("img")["src"] + " | "
+                try:
+                    slides = get_slides(page_product.find(class_=slider_classname), uri=uri)
+                    if slides == uri:
+                        slides = "-"
+                except:
+                    slides = page_product.find(class_="product__slider").find("img")["src"] + " | "
 
-            product = {
-                "Брэнд": "Botavikos",
-                "Наименование товара": name,
-                "Категория": category,
-                "Серия": "-",
-                "Артикул": "-",
-                "Цена": price,
-                "Описание": descr,
-                "Состав": sostav,
-                "Объем": volume,
-                "Фото": slides,
-                "Дополнительная информация": "-",
-                "Ссылка": uri+link,
-                "Ссылка на фото": slides,
-            }
-            data = data.append(product, ignore_index=True)
-            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
-            count += 1
-            print(f"[+] Add {count}")
+                product = {
+                    "Брэнд": "Botavikos",
+                    "Наименование товара": name,
+                    "Категория": category,
+                    "Серия": "-",
+                    "Артикул": "-",
+                    "Цена": price,
+                    "Описание": descr,
+                    "Состав": sostav,
+                    "Объем": volume,
+                    "Фото": slides,
+                    "Дополнительная информация": "-",
+                    "Ссылка": uri+link,
+                    "Ссылка на фото": slides,
+                }
+                data = data.append(product, ignore_index=True)
+                data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+                count += 1
+                print(f"[+] Add {count}")
+        except:
+            pass
 
     return data
 
@@ -1661,46 +1669,48 @@ def get_biotheka(data):
     items_classname = "productData"
     catalogs = page.find_all(class_=catalogs_classname)
     for catalog in catalogs:
-        category = catalog.find(class_="page-header").text
-        items = catalog.find_all(class_=items_classname)
-        for item in items:
-            title = item.find(class_="title")
-            name = title.text
-            link = title.find("a")["href"]
-            volume = get_volume(name)
-            price = item.find(class_="lead").text
+        try:
+            category = catalog.find(class_="page-header").text
+            items = catalog.find_all(class_=items_classname)
+            for item in items:
+                title = item.find(class_="title")
+                name = title.text
+                link = title.find("a")["href"]
+                volume = get_volume(name)
+                price = item.find(class_="lead").text
 
-            descr = ""
-            page_product = get_page(link)
-            descr_dirty = page_product.find(class_="tab-content").find(id="tab_1").find_all("p")
-            for p in descr_dirty:
-                descr.join(p.text)
-            info_prod = page_product.find(class_="details-col-middle").text
-            articul_index = info_prod.find("Artikelnummer:")
-            articul = get_text_block(articul_index, info_prod).replace("Artikelnummer", "")
-            img = page_product.find(class_="detailsInfo").find("img")["src"]
+                descr = ""
+                page_product = get_page(link)
+                descr_dirty = page_product.find(class_="tab-content").find(id="tab_1").find_all("p")
+                for p in descr_dirty:
+                    descr.join(p.text)
+                info_prod = page_product.find(class_="details-col-middle").text
+                articul_index = info_prod.find("Artikelnummer:")
+                articul = get_text_block(articul_index, info_prod).replace("Artikelnummer", "")
+                img = page_product.find(class_="detailsInfo").find("img")["src"]
 
-            product = {
-                "Брэнд": page_product.find(class_="brandLogo").find("a")["title"],
-                "Наименование товара": name,
-                "Категория": category,
-                "Серия": "-",
-                "Артикул": articul,
-                "Цена": price,
-                "Описание": descr,
-                "Состав": "-",
-                "Объем": volume,
-                "Фото": img,
-                "Дополнительная информация": "-",
-                "Ссылка": link,
-                "Ссылка на фото": img,
-            }
+                product = {
+                    "Брэнд": page_product.find(class_="brandLogo").find("a")["title"],
+                    "Наименование товара": name,
+                    "Категория": category,
+                    "Серия": "-",
+                    "Артикул": articul,
+                    "Цена": price,
+                    "Описание": descr,
+                    "Состав": "-",
+                    "Объем": volume,
+                    "Фото": img,
+                    "Дополнительная информация": "-",
+                    "Ссылка": link,
+                    "Ссылка на фото": img,
+                }
 
-            count += 1
-            print(f"[+] Add {count}")
-            data = data.append(product, ignore_index=True)
-            data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
-
+                count += 1
+                print(f"[+] Add {count}")
+                data = data.append(product, ignore_index=True)
+                data.to_excel("data.xlsx", engine='xlsxwriter', index=False)
+        except:
+            pass
 
     return data
 
@@ -1723,27 +1733,28 @@ def start_parser() -> pd.DataFrame:
         "Ссылка на фото"
     ]
 
-    data = pd.DataFrame(columns=columns)
+    # data = pd.DataFrame(columns=columns)
+    data = pd.read_excel("data.xlsx")
 
 # ADD IMGAGES
-    data = get_ecl_items(data)
-    data = get_organic_shop(data)
-    data = get_levrana(data)
-    data = get_miko(data)
-    data = get_craft_cosmetic(data)
-    data = get_organic_zone(data)
-    data = get_innature(data)
-    data = get_biothal(data)
-    data = get_dnc(data)
-    data = get_klar(data)
-    data = get_ecover(data)
-    data = get_sonett(data)
-    data = get_sodasan(data)
-    data = get_biomio(data)
-    data = get_chocolatte(data)
-    data = get_almawin(data)
-    data = get_ecodoo(data)
-    data = get_uralsoap(data)
+    # data = get_ecl_items(data)
+    # data = get_organic_shop(data)
+    # data = get_levrana(data)
+    # data = get_miko(data)
+    # data = get_craft_cosmetic(data)
+    # data = get_organic_zone(data)
+    # data = get_innature(data)
+    # data = get_biothal(data)
+    # data = get_dnc(data)
+    # data = get_klar(data)
+    # data = get_ecover(data)
+    # data = get_sonett(data)
+    # data = get_sodasan(data)
+    # data = get_biomio(data)
+    # data = get_chocolatte(data)
+    # data = get_almawin(data)
+    # data = get_ecodoo(data)
+    # data = get_uralsoap(data)
     data = get_wonderlab(data)
     data = get_molecola(data)
     data = get_purewater(data)
