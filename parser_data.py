@@ -1719,7 +1719,7 @@ def start_parser() -> pd.DataFrame:
     data = pd.DataFrame(columns=columns)
 
 # ADD IMGAGES
-    # data = get_ecl_items(data)
+    data = get_ecl_items(data)
     data = get_organic_shop(data)
     data = get_levrana(data)
     data = get_miko(data)

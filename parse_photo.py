@@ -11,7 +11,7 @@ for img in images:
         continue
     filetype = img.split(".")[-1]
     content = requests.get(img).content
-    f = open(f"1.{filetype}", "wb")
+    f = open(f"photo/1.{filetype}", "wb")
     f.write(content)
     f.close()
 
