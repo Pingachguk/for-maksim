@@ -20,6 +20,11 @@ session.headers["Connection"] = "keep-alive"
 session.headers["User-Agent"] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 YaBrowser/21.8.3.767 (beta) Yowser/2.5 Safari/537.36"
 session.verify = False
 
+def check_url(url):
+    if url.find("http") != url.find("http"):
+        return url[url.rfind("http"):]
+    return url
+
 count = 0
 i = 1
 for index, item in df.iterrows():
@@ -33,7 +38,7 @@ for index, item in df.iterrows():
             photo = massiv_photo[0]
             filetype = photo.split(".")[-1]
             begin = datetime.now().timestamp()
-            content = session.get(photo).content
+            content = session.get(check_url(photo)).content
             name = f"photo/{i}_{j}.{filetype}"
             f = open(f"{name}", "wb")
             f.write(content)
@@ -49,7 +54,7 @@ for index, item in df.iterrows():
         photo = massiv_photo[0]
         filetype = photo.split(".")[-1]
         begin = datetime.now().timestamp()
-        content = session.get(photo).content
+        content = session.get(check_url(photo)).content
         name = f"photo/{i}.{filetype}"
         f = open(f"{name}", "wb")
         f.write(content)
