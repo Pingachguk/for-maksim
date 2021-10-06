@@ -64,10 +64,10 @@ for index, item in df.iterrows():
         f.close()
         end = datetime.now().timestamp()
         print("[*] Duration: %.2f" % (end - begin))
-        i += 1
         result = name
     df.loc[index, "Ссылка на фото"] = result
     count += 1
+    i += 1
     if count == 100:
         df.to_excel("data_with_photo.xlsx", engine='xlsxwriter', index=False)
         count = 0
