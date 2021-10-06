@@ -257,9 +257,9 @@ def get_organic_shop(data):
                 else:
                     volume = "-"
 
-
+                print("/"+link.split("/")[-2]+"/")
                 item["Фото"] = slides
-                item["Категория"] = page.find_all(class_="breadcrumb-item")[-1].text
+                item["Категория"] = "/"+link.split("/")[-2]+"/"
                 item["Наименование товара"] = name
                 item["Брэнд"] = brand
                 item["Артикул"] = articul.replace("Артикул:", "")
