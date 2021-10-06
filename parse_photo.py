@@ -6,6 +6,17 @@ df = pd.read_excel("data.xlsx")
 if not "Путь к фото" in df.columns:
     df["Путь к фото"] = "-"
 
+session = requests.Session()
+adapter = requests.adapters.HTTPAdapter(
+    pool_connections=100,
+    pool_maxsize=100)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
+session.verify = False
+session.headers["Connection"] = "keep-alive"
+session.headers["User-Agent"] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 YaBrowser/21.8.3.767 (beta) Yowser/2.5 Safari/537.36"
+session.verify = False
+
 count = 0
 i = 1
 for index, item in df.iterrows():
@@ -19,7 +30,7 @@ for index, item in df.iterrows():
             photo = massiv_photo[0]
             filetype = photo.split(".")[-1]
             begin = datetime.now().timestamp()
-            content = requests.get(photo).content
+            content = session.get(photo).content
             name = f"photo/{i}_{j}.{filetype}"
             f = open(f"{name}", "wb")
             f.write(content)
@@ -35,7 +46,7 @@ for index, item in df.iterrows():
         photo = massiv_photo[0]
         filetype = photo.split(".")[-1]
         begin = datetime.now().timestamp()
-        content = requests.get(photo).content
+        content = session.get(photo).content
         name = f"photo/{i}.{filetype}"
         f = open(f"{name}", "wb")
         f.write(content)
