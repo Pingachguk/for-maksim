@@ -1,6 +1,10 @@
 import pandas as pd
 import requests
 from datetime import datetime
+import urllib3
+
+
+urllib3.disable_warnings()
 
 df = pd.read_excel("data.xlsx")
 if not "Путь к фото" in df.columns:
