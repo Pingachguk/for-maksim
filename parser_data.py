@@ -644,7 +644,10 @@ def get_biothal(data):
             for item in items:
                 url = item.find(class_=img_classname).find("a")["href"]
                 page_product = get_page(url)
-                slides = get_slides(page_product.find(class_="thumbnails-left"))
+                try:
+                    slides = get_slides(page_product.find(class_="thumbnails-left"))
+                except:
+                    slides = ""
                 product = {
                     "Брэнд": "BIOTHAL",
                     "Наименование товара": item.find(class_=title_classname).text,
@@ -658,7 +661,7 @@ def get_biothal(data):
                     "Фото": get_img_src(page_product, img_classname2)+" | "+slides,
                     "Дополнительная информация": page_product.find(id=addinfo_id).text.replace('\n', ''),
                     "Ссылка": url,
-                    "Ссылка на фото": uri+get_img_src(page_product, img_classname2),
+                    "Ссылка на фото": get_img_src(page_product, img_classname2)+" | "+slides,
                 }
                 count += 1
                 print(f"[+] Add {count}")
@@ -1719,16 +1722,19 @@ def start_parser() -> pd.DataFrame:
         "Ссылка",
         "Ссылка на фото"
     ]
-    data = pd.DataFrame(columns=columns)
+    try:
+        data = pd.read_xlsx("data.xlsx")
+    except:
+        data = pd.DataFrame(columns=columns)
 
 # ADD IMGAGES
-    data = get_ecl_items(data)
-    data = get_organic_shop(data)
-    data = get_levrana(data)
-    data = get_miko(data)
-    data = get_craft_cosmetic(data)
-    data = get_organic_zone(data)
-    data = get_innature(data)
+#     data = get_ecl_items(data)
+#     data = get_organic_shop(data)
+#     data = get_levrana(data)
+#     data = get_miko(data)
+#     data = get_craft_cosmetic(data)
+#     data = get_organic_zone(data)
+#     data = get_innature(data)
     data = get_biothal(data)
     data = get_dnc(data)
     data = get_klar(data)
