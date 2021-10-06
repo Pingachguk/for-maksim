@@ -22,6 +22,7 @@ session.verify = False
 
 def check_url(url):
     if url.find("http") != url.rfind("http"):
+        print("AAAAAAAAAAAA")
         return url[url.rfind("http"):]
     return url
 
@@ -36,9 +37,10 @@ for index, item in df.iterrows():
         j = 1
         for url in massiv_photo:
             photo = massiv_photo[0]
+            url = check_url(photo)
             filetype = photo.split(".")[-1]
             begin = datetime.now().timestamp()
-            content = session.get(check_url(photo)).content
+            content = session.get(url).content
             name = f"photo/{i}_{j}.{filetype}"
             f = open(f"{name}", "wb")
             f.write(content)
@@ -52,9 +54,10 @@ for index, item in df.iterrows():
         result = massiv_photo[0]
     elif len(massiv_photo) == 1 and not massiv_photo[0] == "":
         photo = massiv_photo[0]
+        url = check_url(photo)
         filetype = photo.split(".")[-1]
         begin = datetime.now().timestamp()
-        content = session.get(check_url(photo)).content
+        content = session.get(url).content
         name = f"photo/{i}.{filetype}"
         f = open(f"{name}", "wb")
         f.write(content)
